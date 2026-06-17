@@ -645,6 +645,8 @@ function ownerHub() {
       await this.loadComps();
       if (this.tier !== 'free') {
         await Promise.all([this.loadPace(), this.loadRates()]);
+        // Redraw once after own rates land so the orange line renders on top of comps
+        this.$nextTick(() => this.drawChart());
       }
     },
 
@@ -770,8 +772,6 @@ function ownerHub() {
       rows.forEach(r => { map[r.week_of] = r.weekly_rate; });
       this.ownRates     = map;
       this.ownRateBasis = rows[0]?.rate_basis || null;
-      // Redraw chart now that own rates are available
-      this.$nextTick(() => this.drawChart());
     },
 
     // Position of own rate vs comp bucket for a given week
