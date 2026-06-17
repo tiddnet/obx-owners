@@ -133,22 +133,26 @@
                animation: spin .7s linear infinite; margin: 2rem auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-msg { color: #c62828; font-size: .85rem; padding: .5rem; }
-    [x-cloak] { display: none !important; }
+    /* [x-cloak] removed — landing renders immediately, no full-page hide */
     .mt1 { margin-top: .75rem; }
     .mt2 { margin-top: 1.25rem; }
     .mb1 { margin-bottom: .75rem; }
   </style>
 </head>
-<body x-data="ownerHub()" x-init="init()" x-cloak>
+<body x-data="ownerHub()" x-init="init()">
 
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
 <header>
   <a class="logo" href="/">OBX <span>Owner Hub</span></a>
   <div>
-    <template x-if="!user">
+    <!-- Loading: dim spinner while auth resolves -->
+    <template x-if="loading">
+      <div class="spinner" style="width:20px;height:20px;margin:0"></div>
+    </template>
+    <template x-if="!loading && !user">
       <button class="btn btn-primary btn-sm" @click="login()">Sign in</button>
     </template>
-    <template x-if="user">
+    <template x-if="!loading && user">
       <div style="display:flex;align-items:center;gap:.75rem">
         <span style="font-size:.82rem;color:var(--muted)" x-text="user.email"></span>
         <button class="btn btn-outline btn-sm" @click="logout()">Sign out</button>
@@ -157,18 +161,16 @@
   </div>
 </header>
 
-<!-- ── Loading ────────────────────────────────────────────────────────────── -->
-<template x-if="loading">
-  <div class="main"><div class="spinner"></div></div>
-</template>
-
-<!-- ── Landing (unauthenticated) ──────────────────────────────────────────── -->
-<template x-if="!loading && !user">
+<!-- ── Landing (always visible — static content, no auth gate) ────────────── -->
+<template x-if="!user">
   <div class="main">
     <div class="hero">
       <h1>Know where your OBX rental <em>actually</em> stands</h1>
       <p>Compare your property to 9,000+ Outer Banks rentals. See the market p50 for free. Unlock full percentile breakdowns, booking pace, and weekly rate status with Pro.</p>
-      <button class="btn btn-primary" @click="login()">Get started — it's free</button>
+      <!-- Disabled until auth0 client is ready; then clickable -->
+      <button class="btn btn-primary" @click="login()" :disabled="loading">
+        Get started — it's free
+      </button>
     </div>
 
     <div class="feature-grid">
@@ -201,7 +203,7 @@
 </template>
 
 <!-- ── Dashboard (authenticated) ──────────────────────────────────────────── -->
-<template x-if="!loading && user">
+<template x-if="user">
   <div class="main">
 
     <!-- Property picker -->
@@ -568,6 +570,7 @@ function ownerHub() {
     },
 
     async login() {
+      if (!this.auth0) { console.warn('Auth0 not ready yet'); return; }
       await this.auth0.loginWithRedirect({
         authorizationParams: { redirect_uri: location.origin + location.pathname },
       });
