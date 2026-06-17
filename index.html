@@ -167,7 +167,7 @@
     <div class="hero">
       <h1>Know where your OBX rental <em>actually</em> stands</h1>
       <p>Compare your property to 9,000+ Outer Banks rentals. See the market p50 for free. Unlock full percentile breakdowns, booking pace, and weekly rate status with Pro.</p>
-      <button class="btn btn-primary" @click="login()" :disabled="loading || !auth0">
+      <button class="btn btn-primary" @click="login()" :disabled="loading || !authClient">
         Get started — it's free
       </button>
     </div>
@@ -495,7 +495,7 @@ const API_BASE       = 'https://owners-api.obx.deals';
 function ownerHub() {
   return {
     // Auth state
-    auth0:   null,
+    authClient: null,
     user:    null,
     token:   null,
     loading: true,
@@ -541,7 +541,7 @@ function ownerHub() {
     // ── Init ─────────────────────────────────────────────────────────────────
     async init() {
       try {
-        this.auth0 = await auth0.createAuth0Client({
+        this.authClient = await auth0.createAuth0Client({
           domain:        AUTH0_DOMAIN,
           clientId:      AUTH0_CLIENT,
           authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email' },
@@ -551,17 +551,17 @@ function ownerHub() {
         // Handle redirect callback (code exchange after Auth0 login)
         if (location.search.includes('code=') || location.search.includes('error=')) {
           try {
-            await this.auth0.handleRedirectCallback();
+            await this.authClient.handleRedirectCallback();
           } catch (e) {
             console.warn('Redirect callback error:', e);
           }
           history.replaceState({}, document.title, location.pathname);
         }
 
-        const isAuthenticated = await this.auth0.isAuthenticated();
+        const isAuthenticated = await this.authClient.isAuthenticated();
         if (isAuthenticated) {
-          this.token = await this.auth0.getTokenSilently();
-          const profile = await this.auth0.getUser();
+          this.token = await this.authClient.getTokenSilently();
+          const profile = await this.authClient.getUser();
           this.user = profile;
           this.ingestionForm.contact_email = profile.email || '';
           await this.loadMe();
@@ -574,20 +574,20 @@ function ownerHub() {
     },
 
     async login() {
-      if (!this.auth0) { console.warn('Auth0 not ready yet'); return; }
-      await this.auth0.loginWithRedirect({
+      if (!this.authClient) { console.warn('Auth0 not ready yet'); return; }
+      await this.authClient.loginWithRedirect({
         authorizationParams: { redirect_uri: location.origin + location.pathname },
       });
     },
 
     async logout() {
-      await this.auth0.logout({ logoutParams: { returnTo: location.origin } });
+      await this.authClient.logout({ logoutParams: { returnTo: location.origin } });
       this.user = null; this.token = null; this.property = null;
     },
 
     // ── API ───────────────────────────────────────────────────────────────────
     async api(path, opts={}) {
-      if (!this.token) this.token = await this.auth0.getTokenSilently();
+      if (!this.token) this.token = await this.authClient.getTokenSilently();
       const res = await fetch(API_BASE + path, {
         ...opts,
         headers: { Authorization: 'Bearer ' + this.token, 'Content-Type': 'application/json', ...(opts.headers||{}) },
