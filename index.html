@@ -464,6 +464,14 @@
   </div>
 </template>
 
+<!-- ── Payment success banner ─────────────────────────────────────────────── -->
+<template x-if="paymentSuccess">
+  <div style="position:fixed;top:0;left:0;right:0;background:#2e7d32;color:#fff;text-align:center;padding:.75rem 1rem;z-index:200;font-weight:600">
+    ✓ Welcome to Pro! Your account has been upgraded. Full data is now unlocked.
+    <button @click="paymentSuccess=false" style="margin-left:1rem;background:rgba(255,255,255,.2);border:none;color:#fff;padding:.2rem .6rem;border-radius:4px;cursor:pointer">×</button>
+  </div>
+</template>
+
 <!-- ── Upgrade modal ──────────────────────────────────────────────────────── -->
 <template x-if="upgradeVisible">
   <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem"
@@ -476,27 +484,28 @@
       <ul style="font-size:.88rem;margin-bottom:1.25rem;padding-left:1.2rem">
         <li>p25 / p50 / p75 / p90 for every week of the season</li>
         <li>Booking pace: % of comp set booked week-by-week</li>
-        <li>Rate basis toggle: compare like-for-like across PMs</li>
+        <li>Your rate vs. market chart with booked-week dots</li>
         <li>Weekly briefing email every Sunday</li>
       </ul>
-      <p style="font-size:.84rem;color:var(--muted);margin-bottom:1rem">Pro is coming soon. We'll notify you when it's ready.</p>
-      <template x-if="!upgradeInterestFlagged">
+      <div style="background:#f8f9fa;border-radius:6px;padding:.75rem 1rem;margin-bottom:1.25rem;display:flex;align-items:baseline;gap:.5rem">
+        <span style="font-size:1.75rem;font-weight:700">$199</span>
+        <span style="font-size:.9rem;color:var(--muted)">one-time · 2026 season (Apr–Oct)</span>
+      </div>
+      <template x-if="!checkoutLoading">
         <div>
           <button class="btn btn-upgrade" style="width:100%;margin-bottom:.5rem"
-                  :disabled="upgradeInterestLoading"
-                  @click="flagUpgradeInterest()">
-            <span x-show="!upgradeInterestLoading">Notify me when Pro launches</span>
-            <span x-show="upgradeInterestLoading">Saving…</span>
+                  @click="startCheckout()">
+            Unlock Pro — $199
           </button>
           <button class="btn btn-outline" style="width:100%" @click="upgradeVisible=false">Maybe later</button>
         </div>
       </template>
-      <template x-if="upgradeInterestFlagged">
-        <div style="text-align:center;padding:.5rem 0">
-          <p style="color:#2e7d32;font-weight:600">✓ We'll be in touch!</p>
-          <button class="btn btn-outline" style="margin-top:.75rem" @click="upgradeVisible=false">Close</button>
-        </div>
+      <template x-if="checkoutLoading">
+        <div style="text-align:center;padding:.75rem 0;color:var(--muted)">Redirecting to checkout…</div>
       </template>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:.75rem;text-align:center">
+        Secure payment via Stripe. No subscription — one charge, full season.
+      </p>
     </div>
   </div>
 </template>
@@ -547,6 +556,8 @@ function ownerHub() {
     upgradeVisible: false,
     upgradeInterestLoading: false,
     upgradeInterestFlagged: false,
+    checkoutLoading: false,
+    paymentSuccess: false,
     chart: null,
 
     // Ingestion request form
@@ -573,6 +584,13 @@ function ownerHub() {
             console.warn('Redirect callback error:', e);
           }
           history.replaceState({}, document.title, location.pathname);
+        }
+
+        // Handle Stripe Checkout success redirect — re-fetch /me so tier shows as pro
+        if (new URLSearchParams(location.search).get('payment') === 'success') {
+          this.paymentSuccess = true;
+          history.replaceState({}, document.title, location.pathname);
+          // loadMe() runs below after isAuthenticated check; tier will reflect pro
         }
 
         const isAuthenticated = await this.authClient.isAuthenticated();
@@ -840,6 +858,24 @@ function ownerHub() {
 
     // ── Upgrade ───────────────────────────────────────────────────────────────
     showUpgrade() { this.upgradeVisible = true; },
+
+    async startCheckout() {
+      this.checkoutLoading = true;
+      try {
+        const res = await this.api('/subscribe', { method: 'POST', body: '{}' });
+        if (!res || !res.ok) {
+          alert('Unable to start checkout. Please try again.');
+          this.checkoutLoading = false;
+          return;
+        }
+        const data = await res.json();
+        window.location.href = data.checkout_url;
+      } catch (e) {
+        console.error('Checkout error:', e);
+        alert('Unable to start checkout. Please try again.');
+        this.checkoutLoading = false;
+      }
+    },
 
     async flagUpgradeInterest() {
       this.upgradeInterestLoading = true;
