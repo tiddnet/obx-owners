@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OBX Owner Hub — Rental Intelligence for Outer Banks Owners</title>
+  <meta name="description" content="See how your OBX rental property compares to the market. Free comp preview for every property in our index.">
+  <link rel="canonical" href="https://owners.obx.deals/">
+
+  <!-- Auth0 SPA SDK -->
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --ink:    #1a1a1a;
+      --muted:  #5a5a5a;
+      --rule:   #e0e0e0;
+      --accent: #1e6fa8;
+      --accent2:#b04a2c;
+      --bg:     #fafaf7;
+      --card:   #ffffff;
+      --tag-bg: #edf4fb;
+      --tag-ink:#1e6fa8;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           background: var(--bg); color: var(--ink); line-height: 1.5; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout ── */
+    header { background: var(--card); border-bottom: 1px solid var(--rule);
+             padding: 0 1.5rem; display: flex; align-items: center;
+             justify-content: space-between; height: 52px; }
+    .logo { font-weight: 700; font-size: 1rem; color: var(--ink); }
+    .logo span { color: var(--accent); }
+    .main { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: .4rem;
+           padding: .55rem 1.2rem; border-radius: var(--radius);
+           font-size: .9rem; font-weight: 600; cursor: pointer;
+           border: none; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--accent);
+                   color: var(--accent); }
+    .btn-sm { padding: .35rem .85rem; font-size: .82rem; }
+    .btn-upgrade { background: var(--accent2); color: #fff; }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border: 1px solid var(--rule);
+            border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); }
+
+    /* ── Landing ── */
+    .hero { text-align: center; padding: 3.5rem 1rem 2.5rem; }
+    .hero h1 { font-size: clamp(1.6rem, 5vw, 2.4rem); line-height: 1.2;
+               margin-bottom: 1rem; }
+    .hero p  { color: var(--muted); max-width: 540px; margin: 0 auto 2rem; font-size: 1.05rem; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+                    gap: 1rem; margin: 2rem 0; }
+    .feature-card { background: var(--card); border: 1px solid var(--rule);
+                    border-radius: var(--radius); padding: 1.25rem; }
+    .feature-card h3 { font-size: .95rem; margin-bottom: .4rem; }
+    .feature-card p  { font-size: .85rem; color: var(--muted); }
+    .tier-tag { display: inline-block; padding: .15rem .5rem; border-radius: 4px;
+                font-size: .72rem; font-weight: 700; margin-bottom: .5rem; }
+    .tier-free { background: #e8f5e9; color: #2e7d32; }
+    .tier-pro  { background: #fff3e0; color: #e65100; }
+
+    /* ── Dashboard ── */
+    .section-head { font-size: .75rem; font-weight: 700; color: var(--muted);
+                    text-transform: uppercase; letter-spacing: .06em; margin-bottom: .75rem; }
+    .prop-search { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    .prop-search input { flex: 1; border: 1px solid var(--rule); border-radius: var(--radius);
+                         padding: .5rem .75rem; font-size: .9rem; }
+    .prop-search input:focus { outline: 2px solid var(--accent); }
+    .result-list { list-style: none; border: 1px solid var(--rule);
+                   border-radius: var(--radius); overflow: hidden; background: var(--card); }
+    .result-list li { padding: .65rem 1rem; border-bottom: 1px solid var(--rule);
+                      cursor: pointer; font-size: .88rem; }
+    .result-list li:last-child { border-bottom: none; }
+    .result-list li:hover { background: var(--tag-bg); }
+    .result-list li small { color: var(--muted); display: block; font-size: .77rem; }
+
+    .prop-card { display: flex; justify-content: space-between; align-items: flex-start;
+                 gap: 1rem; flex-wrap: wrap; }
+    .prop-meta h2 { font-size: 1.1rem; margin-bottom: .25rem; }
+    .prop-meta p  { font-size: .84rem; color: var(--muted); }
+    .badge { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem;
+             border-radius: 20px; font-size: .76rem; font-weight: 600; }
+    .badge-ocean    { background: #e3f2fd; color: #1565c0; }
+    .badge-sound    { background: #e8eaf6; color: #3949ab; }
+    .badge-interior { background: #f3e5f5; color: #6a1b9a; }
+
+    /* ── Comp chart ── */
+    .chart-wrap { position: relative; height: 240px; margin-top: 1rem; }
+    .comp-weeks { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px,1fr));
+                  gap: .5rem; margin-top: 1rem; }
+    .week-cell { background: var(--card); border: 1px solid var(--rule);
+                 border-radius: 6px; padding: .6rem .75rem; font-size: .82rem; }
+    .week-cell .date  { color: var(--muted); font-size: .72rem; }
+    .week-cell .price { font-weight: 700; font-size: .95rem; }
+    .week-cell.above  { border-left: 3px solid #ef5350; }
+    .week-cell.at     { border-left: 3px solid #66bb6a; }
+    .week-cell.below  { border-left: 3px solid #ffa726; }
+
+    /* ── Upgrade gate ── */
+    .gate { text-align: center; padding: 2rem; border: 2px dashed var(--rule);
+            border-radius: var(--radius); color: var(--muted); }
+    .gate h3 { color: var(--ink); font-size: 1rem; margin-bottom: .4rem; }
+    .gate p  { font-size: .87rem; margin-bottom: 1rem; }
+
+    /* ── Basis toggle ── */
+    .basis-pills { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom .75rem; }
+    .pill { padding: .25rem .7rem; border-radius: 20px; font-size: .78rem; font-weight: 600;
+            cursor: pointer; border: 1.5px solid var(--rule); background: var(--card); color: var(--muted); }
+    .pill.active { background: var(--tag-bg); color: var(--tag-ink); border-color: var(--accent); }
+
+    /* ── Pace bar ── */
+    .pace-bar { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; margin-top: .35rem; }
+    .pace-bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+
+    /* ── Misc ── */
+    .spinner { border: 3px solid var(--rule); border-top-color: var(--accent);
+               border-radius: 50%; width: 28px; height: 28px;
+               animation: spin .7s linear infinite; margin: 2rem auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { color: #c62828; font-size: .85rem; padding: .5rem; }
+    [x-cloak] { display: none !important; }
+    .mt1 { margin-top: .75rem; }
+    .mt2 { margin-top: 1.25rem; }
+    .mb1 { margin-bottom: .75rem; }
+  </style>
+</head>
+<body x-data="ownerHub()" x-init="init()" x-cloak>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<header>
+  <a class="logo" href="/">OBX <span>Owner Hub</span></a>
+  <div>
+    <template x-if="!user">
+      <button class="btn btn-primary btn-sm" @click="login()">Sign in</button>
+    </template>
+    <template x-if="user">
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <span style="font-size:.82rem;color:var(--muted)" x-text="user.email"></span>
+        <button class="btn btn-outline btn-sm" @click="logout()">Sign out</button>
+      </div>
+    </template>
+  </div>
+</header>
+
+<!-- ── Loading ────────────────────────────────────────────────────────────── -->
+<template x-if="loading">
+  <div class="main"><div class="spinner"></div></div>
+</template>
+
+<!-- ── Landing (unauthenticated) ──────────────────────────────────────────── -->
+<template x-if="!loading && !user">
+  <div class="main">
+    <div class="hero">
+      <h1>Know where your OBX rental <em>actually</em> stands</h1>
+      <p>Compare your property to 9,000+ Outer Banks rentals. See the market p50 for free. Unlock full percentile breakdowns, booking pace, and weekly rate status with Pro.</p>
+      <button class="btn btn-primary" @click="login()">Get started — it's free</button>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <span class="tier-tag tier-free">Free</span>
+        <h3>Market comp preview</h3>
+        <p>See the median weekly rate for your community, bedroom count, and view type — every week of the season.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tier-tag tier-pro">Pro</span>
+        <h3>Full percentile breakdown</h3>
+        <p>p25 / p50 / p75 / p90 — know exactly where you sit in the market, not just the midpoint.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tier-tag tier-pro">Pro</span>
+        <h3>Booking pace signal</h3>
+        <p>What % of your comp set is already booked week-by-week. The clearest signal for when to hold and when to cut.</p>
+      </div>
+      <div class="feature-card">
+        <span class="tier-tag tier-pro">Pro</span>
+        <h3>Rate basis transparency</h3>
+        <p>Not all OBX rates are comparable. We separate base rent, rent+fees, and fee-inclusive rates so your comps are apples-to-apples.</p>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:2rem">
+      <p style="font-size:.84rem;color:var(--muted)">Data from Hatteras Realty, Outer Banks Blue, SOS, Twiddy, Village Realty, KEES, and 18 more OBX property managers.</p>
+    </div>
+  </div>
+</template>
+
+<!-- ── Dashboard (authenticated) ──────────────────────────────────────────── -->
+<template x-if="!loading && user">
+  <div class="main">
+
+    <!-- Property picker -->
+    <template x-if="!property">
+      <div>
+        <p class="section-head">Find your property</p>
+        <div class="prop-search">
+          <input type="text" placeholder="Search by property name or ID…"
+                 x-model="searchQ"
+                 @input.debounce.400ms="searchProps()"
+                 @keydown.escape="searchResults=[]">
+          <button class="btn btn-primary btn-sm" @click="searchProps()">Search</button>
+        </div>
+        <div x-show="searchError" class="error-msg" x-text="searchError"></div>
+        <div x-show="searchLoading"><div class="spinner" style="width:20px;height:20px;margin:1rem 0"></div></div>
+        <ul class="result-list" x-show="searchResults.length">
+          <template x-for="r in searchResults" :key="r.property_id">
+            <li @click="selectProperty(r)">
+              <span x-text="r.property_name || r.property_id"></span>
+              <small x-text="[r.community, r.pmc, r.bedrooms ? r.bedrooms+'BR' : ''].filter(Boolean).join(' · ')"></small>
+            </li>
+          </template>
+        </ul>
+        <p x-show="searchResults.length===0 && searchQ.length>1 && !searchLoading"
+           style="font-size:.84rem;color:var(--muted);margin-top:.5rem">
+          No results. Try the property name or your PM's listing ID.
+          <a href="mailto:verify@obx.deals">Request ingestion →</a>
+        </p>
+      </div>
+    </template>
+
+    <!-- Property dashboard -->
+    <template x-if="property">
+      <div>
+        <!-- Property header -->
+        <div class="card mb1">
+          <div class="prop-card">
+            <div class="prop-meta">
+              <h2 x-text="property.property_name || property.property_id"></h2>
+              <p x-text="[property.community, property.pmc].filter(Boolean).join(' · ')"></p>
+              <p style="margin-top:.25rem">
+                <span x-text="(property.canonical_bedrooms || property.bedrooms || '?') + ' BR'"></span>
+                &nbsp;·&nbsp;
+                <span :class="'badge badge-'+property.view_tier"
+                      x-text="property.view_tier || 'interior'"></span>
+                <template x-if="property.has_pool"><span style="margin-left:.4rem;font-size:.8rem">🏊 pool</span></template>
+                <template x-if="property.has_hot_tub"><span style="margin-left:.4rem;font-size:.8rem">♨️ hot tub</span></template>
+              </p>
+            </div>
+            <div>
+              <button class="btn btn-outline btn-sm" @click="clearProperty()">Change property</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rate basis pills (if multiple bases in comp data) -->
+        <template x-if="availableBases.length > 1">
+          <div class="mb1">
+            <p class="section-head">Comp rate basis</p>
+            <div class="basis-pills">
+              <template x-for="b in availableBases" :key="b">
+                <button class="pill" :class="{active: activeBases.includes(b)}"
+                        @click="toggleBasis(b)" x-text="b"></button>
+              </template>
+            </div>
+            <p style="font-size:.77rem;color:var(--muted)">Rates across OBX use different bases (base rent, rent+fees, fee-inclusive). Toggle to compare like-for-like.</p>
+          </div>
+        </template>
+
+        <!-- Comp chart -->
+        <div class="card mb1">
+          <p class="section-head">Market rate comps — <span x-text="property.community"></span>,
+            <span x-text="property.canonical_bedrooms || property.bedrooms"></span>BR,
+            <span x-text="property.view_tier"></span></p>
+
+          <div x-show="compsLoading"><div class="spinner"></div></div>
+          <div x-show="compsError" class="error-msg" x-text="compsError"></div>
+
+          <template x-if="!compsLoading && compsData">
+            <div>
+              <div class="chart-wrap">
+                <canvas id="compsChart"></canvas>
+              </div>
+
+              <!-- Free tier gate for full percentiles -->
+              <template x-if="tier === 'free'">
+                <div class="gate mt2">
+                  <h3>Full percentile breakdown</h3>
+                  <p>See p25/p50/p75/p90 to know exactly where your rate sits — not just the midpoint.</p>
+                  <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock with Pro →</button>
+                </div>
+              </template>
+
+              <!-- Paid: weekly breakdown cells -->
+              <template x-if="tier !== 'free'">
+                <div class="comp-weeks mt1">
+                  <template x-for="w in filteredWeeks" :key="w.week_of">
+                    <div class="week-cell">
+                      <div class="date" x-text="fmtWeek(w.week_of)"></div>
+                      <template x-if="activeBasesData(w)">
+                        <div>
+                          <div class="price" x-text="'$'+Math.round(activeBasesData(w).p50).toLocaleString()">
+                          </div>
+                          <div style="font-size:.72rem;color:var(--muted)"
+                               x-text="'p25: $'+Math.round(activeBasesData(w).p25 || 0).toLocaleString()+
+                                       ' · p75: $'+Math.round(activeBasesData(w).p75 || 0).toLocaleString()">
+                          </div>
+                          <div style="font-size:.72rem;color:var(--muted)"
+                               x-text="'n='+activeBasesData(w).n+' comps'"></div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Booking pace (paid) -->
+        <template x-if="tier !== 'free'">
+          <div class="card mb1">
+            <p class="section-head">Booking pace — % of comp set already booked</p>
+            <div x-show="paceLoading"><div class="spinner"></div></div>
+            <div x-show="paceError" class="error-msg" x-text="paceError"></div>
+            <template x-if="!paceLoading && paceData && paceData.length">
+              <div class="comp-weeks">
+                <template x-for="w in paceData.slice(0, 20)" :key="w.week_of">
+                  <div class="week-cell">
+                    <div class="date" x-text="fmtWeek(w.week_of)"></div>
+                    <div class="price" x-text="Math.round(w.pct_booked*100)+'%'"></div>
+                    <div class="pace-bar">
+                      <div class="pace-bar-fill" :style="'width:'+Math.round(w.pct_booked*100)+'%'"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <template x-if="!paceLoading && (!paceData || !paceData.length)">
+              <p style="font-size:.84rem;color:var(--muted)">No pace data for this comp set yet.</p>
+            </template>
+          </div>
+        </template>
+
+        <!-- Pace gate for free tier -->
+        <template x-if="tier === 'free'">
+          <div class="gate mb1">
+            <h3>Booking pace signal</h3>
+            <p>See what % of your comp set is already booked week by week — the clearest signal for timing price moves.</p>
+            <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock with Pro →</button>
+          </div>
+        </template>
+
+      </div>
+    </template>
+
+  </div>
+</template>
+
+<!-- ── Upgrade modal ──────────────────────────────────────────────────────── -->
+<template x-if="upgradeVisible">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem"
+       @click.self="upgradeVisible=false">
+    <div class="card" style="max-width:420px;width:100%">
+      <h2 style="font-size:1.2rem;margin-bottom:.5rem">OBX Owner Hub Pro</h2>
+      <p style="font-size:.9rem;color:var(--muted);margin-bottom:1rem">
+        Full percentile breakdowns, booking pace, weekly rate status, and PDF reports — everything you need to make confident pricing decisions.
+      </p>
+      <ul style="font-size:.88rem;margin-bottom:1.25rem;padding-left:1.2rem">
+        <li>p25 / p50 / p75 / p90 for every week of the season</li>
+        <li>Booking pace: % of comp set booked week-by-week</li>
+        <li>Rate basis toggle: compare like-for-like across PMs</li>
+        <li>Weekly briefing email every Sunday</li>
+      </ul>
+      <p style="font-size:.84rem;font-weight:700;margin-bottom:1rem">$29/month · $199/season (Apr–Oct)</p>
+      <button class="btn btn-upgrade" style="width:100%;margin-bottom:.5rem"
+              @click="startCheckout()">Upgrade to Pro →</button>
+      <button class="btn btn-outline" style="width:100%" @click="upgradeVisible=false">Maybe later</button>
+    </div>
+  </div>
+</template>
+
+<script>
+const AUTH0_DOMAIN   = 'dev-4fg3icvrjdrj4o4a.us.auth0.com';
+const AUTH0_CLIENT   = 'UNIMDNEqijxkLH1y9pPnZeoXmxICvG9D';
+const AUTH0_AUDIENCE = 'https://owners-api.obx.deals';
+const API_BASE       = 'https://owners-api.obx.deals';
+
+function ownerHub() {
+  return {
+    // Auth state
+    auth0:   null,
+    user:    null,
+    token:   null,
+    loading: true,
+
+    // User record
+    tier:     'free',
+    features: {},
+
+    // Property
+    property:      null,
+    searchQ:       '',
+    searchResults: [],
+    searchLoading: false,
+    searchError:   '',
+
+    // Comps
+    compsData:   null,
+    compsLoading: false,
+    compsError:  '',
+    activeBases: [],
+
+    // Pace
+    paceData:    null,
+    paceLoading: false,
+    paceError:   '',
+
+    // UI
+    upgradeVisible: false,
+    chart: null,
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    async init() {
+      this.auth0 = await auth0.createAuth0Client({
+        domain:        AUTH0_DOMAIN,
+        clientId:      AUTH0_CLIENT,
+        authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email' },
+        cacheLocation: 'memory',
+      });
+
+      // Handle redirect callback
+      if (location.search.includes('code=') || location.search.includes('error=')) {
+        try {
+          await this.auth0.handleRedirectCallback();
+        } catch (e) {
+          console.warn('Redirect callback error:', e);
+        }
+        history.replaceState({}, document.title, location.pathname);
+      }
+
+      const isAuthenticated = await this.auth0.isAuthenticated();
+      if (isAuthenticated) {
+        this.token = await this.auth0.getTokenSilently();
+        const profile = await this.auth0.getUser();
+        this.user = profile;
+        await this.loadMe();
+      }
+      this.loading = false;
+    },
+
+    async login() {
+      await this.auth0.loginWithRedirect({
+        authorizationParams: { redirect_uri: location.origin + location.pathname },
+      });
+    },
+
+    async logout() {
+      await this.auth0.logout({ logoutParams: { returnTo: location.origin } });
+      this.user = null; this.token = null; this.property = null;
+    },
+
+    // ── API ───────────────────────────────────────────────────────────────────
+    async api(path, opts={}) {
+      if (!this.token) this.token = await this.auth0.getTokenSilently();
+      const res = await fetch(API_BASE + path, {
+        ...opts,
+        headers: { Authorization: 'Bearer ' + this.token, 'Content-Type': 'application/json', ...(opts.headers||{}) },
+      });
+      if (res.status === 401) { this.token = null; await this.login(); return null; }
+      return res;
+    },
+
+    // ── User record ──────────────────────────────────────────────────────────
+    async loadMe() {
+      const res = await this.api('/me');
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      this.tier     = data.tier || 'free';
+      this.features = data.features || {};
+      if (data.property_id) await this.loadProperty(data.property_id);
+    },
+
+    // ── Property search ───────────────────────────────────────────────────────
+    async searchProps() {
+      const q = this.searchQ.trim();
+      if (q.length < 2) { this.searchResults = []; return; }
+      this.searchLoading = true; this.searchError = '';
+      const res = await this.api('/property/search?q=' + encodeURIComponent(q));
+      this.searchLoading = false;
+      if (!res) return;
+      if (!res.ok) { this.searchError = 'Search failed. Try again.'; return; }
+      this.searchResults = await res.json();
+    },
+
+    async selectProperty(r) {
+      this.searchResults = [];
+      await this.loadProperty(r.property_id);
+      // Save to user record
+      await this.api('/me/property', {
+        method: 'POST',
+        body: JSON.stringify({ property_id: r.property_id }),
+      });
+    },
+
+    async loadProperty(id) {
+      const res = await this.api('/property/' + encodeURIComponent(id));
+      if (!res || !res.ok) return;
+      const prop = await res.json();
+      // Derive view_tier if not set
+      prop.view_tier = this._viewTier(prop.view_type);
+      this.property = prop;
+      await this.loadComps();
+      if (this.tier !== 'free') await this.loadPace();
+    },
+
+    clearProperty() {
+      this.property = null; this.compsData = null; this.paceData = null;
+      this.searchQ = ''; this.searchResults = [];
+      if (this.chart) { this.chart.destroy(); this.chart = null; }
+    },
+
+    // ── Comps ─────────────────────────────────────────────────────────────────
+    async loadComps() {
+      this.compsLoading = true; this.compsError = ''; this.compsData = null;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/comps');
+      this.compsLoading = false;
+      if (!res || !res.ok) { this.compsError = 'Could not load comp data.'; return; }
+      const data = await res.json();
+      this.compsData = data;
+
+      // Collect all rate_basis values across all weeks
+      const bases = new Set();
+      (data.weeks || []).forEach(w => Object.keys(w.by_basis || {}).forEach(b => bases.add(b)));
+      this.availableBases = [...bases].sort();
+      this.activeBases = [...this.availableBases]; // default all on
+
+      this.$nextTick(() => this.drawChart());
+    },
+
+    get filteredWeeks() {
+      return (this.compsData?.weeks || []).filter(w =>
+        this.activeBases.some(b => w.by_basis && w.by_basis[b])
+      );
+    },
+
+    get availableBases() {
+      return this._availableBases || [];
+    },
+    set availableBases(v) { this._availableBases = v; },
+
+    activeBasesData(week) {
+      // Return merged data across active bases (average of p50s for simplicity)
+      const entries = this.activeBases.map(b => week.by_basis?.[b]).filter(Boolean);
+      if (!entries.length) return null;
+      const avg = (key) => entries.reduce((s,e) => s + (e[key]||0), 0) / entries.length;
+      return { p25: avg('p25'), p50: avg('p50'), p75: avg('p75'), p90: avg('p90'),
+               n: entries.reduce((s,e) => s + (e.n||0), 0) };
+    },
+
+    toggleBasis(b) {
+      if (this.activeBases.includes(b)) {
+        if (this.activeBases.length === 1) return; // keep at least one
+        this.activeBases = this.activeBases.filter(x => x !== b);
+      } else {
+        this.activeBases = [...this.activeBases, b];
+      }
+      this.$nextTick(() => this.drawChart());
+    },
+
+    drawChart() {
+      const weeks = this.filteredWeeks.slice(0, 26);
+      if (!weeks.length) return;
+      const labels = weeks.map(w => this.fmtWeek(w.week_of));
+      const p50s   = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p50) : null; });
+      const p25s   = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p25) : null; });
+      const p75s   = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p75) : null; });
+
+      const ctx = document.getElementById('compsChart');
+      if (!ctx) return;
+      if (this.chart) this.chart.destroy();
+
+      const free = this.tier === 'free';
+      this.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'p50 (median)', data: p50s, backgroundColor: 'rgba(30,111,168,.75)', borderRadius: 3 },
+            ...(!free ? [
+              { label: 'p25', data: p25s, backgroundColor: 'rgba(30,111,168,.25)', borderRadius: 3 },
+              { label: 'p75', data: p75s, backgroundColor: 'rgba(30,111,168,.45)', borderRadius: 3 },
+            ] : []),
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: !free } },
+          scales: {
+            y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } },
+            x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+          },
+        },
+      });
+    },
+
+    // ── Booking pace ──────────────────────────────────────────────────────────
+    async loadPace() {
+      this.paceLoading = true; this.paceError = ''; this.paceData = null;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/pace');
+      this.paceLoading = false;
+      if (!res || !res.ok) { this.paceError = 'Could not load pace data.'; return; }
+      this.paceData = await res.json();
+    },
+
+    // ── Upgrade ───────────────────────────────────────────────────────────────
+    showUpgrade() { this.upgradeVisible = true; },
+    startCheckout() {
+      // Phase 4: Stripe Checkout. For now, direct to email.
+      window.open('mailto:hello@obx.deals?subject=OBX Owner Hub Pro', '_blank');
+      this.upgradeVisible = false;
+    },
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    fmtWeek(iso) {
+      if (!iso) return '';
+      const d = new Date(iso + 'T12:00:00Z');
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    },
+
+    _viewTier(view_type) {
+      const vt = (view_type || '').toLowerCase().trim();
+      if (['oceanfront','semi-oceanfront','semi oceanfront','ocean_view','ocean_side','oceanside'].includes(vt)) return 'ocean';
+      if (['soundfront','soundside','sound_view','sound front','sound side'].includes(vt)) return 'sound';
+      return 'interior';
+    },
+  };
+}
+</script>
+</body>
+</html>
