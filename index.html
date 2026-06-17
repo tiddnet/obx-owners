@@ -460,6 +460,47 @@
         </template>
 
       </div>
+
+      <!-- ── Support form ───────────────────────────────────────────────────── -->
+      <div id="support" class="card" style="margin-top:1.5rem">
+        <p class="section-head">Contact &amp; feedback</p>
+        <template x-if="supportSubmitted">
+          <p style="color:#2e7d32;font-weight:600;padding:.5rem 0">
+            ✓ Your message was received. We'll follow up if needed.
+          </p>
+        </template>
+        <template x-if="!supportSubmitted">
+          <div>
+            <div style="margin-bottom:.75rem">
+              <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Subject</label>
+              <select x-model="supportSubject"
+                      style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.5rem .75rem;font-size:.9rem;background:var(--card)">
+                <option value="">Select a topic…</option>
+                <option value="missing_property">Missing property</option>
+                <option value="billing">Billing</option>
+                <option value="report_question">Report question</option>
+                <option value="feature_request">Feature request</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div style="margin-bottom:.75rem">
+              <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Message</label>
+              <textarea x-model="supportMessage" rows="4"
+                        placeholder="Describe your question or request…"
+                        style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.5rem .75rem;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
+            </div>
+            <button class="btn btn-primary btn-sm"
+                    :disabled="supportLoading || !supportSubject || supportMessage.length < 10"
+                    @click="submitSupport()">
+              <span x-text="supportLoading ? 'Sending…' : 'Send message'"></span>
+            </button>
+            <template x-if="supportError">
+              <p style="color:var(--accent2);font-size:.82rem;margin-top:.5rem" x-text="supportError"></p>
+            </template>
+          </div>
+        </template>
+      </div>
+
     </template>
 
   </div>
@@ -560,6 +601,13 @@ function ownerHub() {
     checkoutLoading: false,
     paymentSuccess: false,
     chart: null,
+
+    // Support form
+    supportSubject:   '',
+    supportMessage:   '',
+    supportLoading:   false,
+    supportSubmitted: false,
+    supportError:     '',
 
     // Ingestion request form
     ingestionForm: { contact_email: '', urls_raw: '', description: '', favorite_feature: '', favorite_place: '' },
@@ -909,6 +957,24 @@ function ownerHub() {
         this.ingestionSubmitted = true;
       } else {
         this.ingestionError = 'Something went wrong. Please try again.';
+      }
+    },
+
+    // ── Support request ───────────────────────────────────────────────────────
+    async submitSupport() {
+      this.supportError = '';
+      if (!this.supportSubject) { this.supportError = 'Please select a subject.'; return; }
+      if (this.supportMessage.trim().length < 10) { this.supportError = 'Please provide a bit more detail.'; return; }
+      this.supportLoading = true;
+      const res = await this.api('/support', {
+        method: 'POST',
+        body: JSON.stringify({ subject: this.supportSubject, message: this.supportMessage.trim() }),
+      });
+      this.supportLoading = false;
+      if (res && res.ok) {
+        this.supportSubmitted = true;
+      } else {
+        this.supportError = 'Something went wrong. Please try again.';
       }
     },
 
