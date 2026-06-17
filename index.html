@@ -343,8 +343,7 @@
           <div x-show="compsLoading"><div class="spinner"></div></div>
           <div x-show="compsError" class="error-msg" x-text="compsError"></div>
 
-          <template x-if="!compsLoading && compsData">
-            <div>
+          <div x-show="!compsLoading && compsData">
               <div class="chart-wrap">
                 <canvas id="compsChart"></canvas>
               </div>
@@ -409,7 +408,7 @@
                 </div>
               </template>
             </div>
-          </template>
+          </div>
         </div>
 
         <!-- Booking pace (paid) -->
