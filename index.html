@@ -225,11 +225,65 @@
             </li>
           </template>
         </ul>
-        <p x-show="searchResults.length===0 && searchQ.length>1 && !searchLoading"
-           style="font-size:.84rem;color:var(--muted);margin-top:.5rem">
-          No results. Try the property name or your PM's listing ID.
-          <a href="mailto:verify@obx.deals">Request ingestion →</a>
-        </p>
+        <!-- Not in index — ingestion request form -->
+        <div x-show="searchResults.length===0 && searchQ.length>1 && !searchLoading"
+             style="margin-top:1rem">
+          <p style="font-size:.84rem;color:var(--muted);margin-bottom:.75rem">
+            Not finding your property? We index 9,000+ OBX rentals — if yours isn't here yet, tell us about it and we'll add it.
+          </p>
+          <template x-if="!ingestionSubmitted">
+            <div class="card" x-data>
+              <p class="section-head">Request property ingestion</p>
+              <div style="display:grid;gap:.65rem">
+                <div>
+                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Contact email <span style="color:#c62828">*</span></label>
+                  <input type="email" x-model="ingestionForm.contact_email"
+                         style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
+                         placeholder="your@email.com">
+                </div>
+                <div>
+                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Property URL(s) <span style="color:#c62828">*</span></label>
+                  <textarea x-model="ingestionForm.urls_raw" rows="3"
+                            style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem;resize:vertical"
+                            placeholder="https://www.hatterasrealty.com/...&#10;https://www.airbnb.com/rooms/...&#10;One URL per line. Include any platform you're listed on."></textarea>
+                </div>
+                <div>
+                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Tell us about your property</label>
+                  <textarea x-model="ingestionForm.description" rows="2"
+                            style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem;resize:vertical"
+                            placeholder="Bedrooms, view type, community, anything helpful for getting the data right."></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+                  <div>
+                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Favorite feature of your property</label>
+                    <input type="text" x-model="ingestionForm.favorite_feature"
+                           style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
+                           placeholder="Hot tub on the top deck…">
+                  </div>
+                  <div>
+                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Favorite local spot</label>
+                    <input type="text" x-model="ingestionForm.favorite_place"
+                           style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
+                           placeholder="Buxton Woods, Frisco pier…">
+                  </div>
+                </div>
+                <div x-show="ingestionError" class="error-msg" x-text="ingestionError"></div>
+                <button class="btn btn-primary" style="align-self:flex-start"
+                        :disabled="ingestionLoading"
+                        @click="submitIngestionRequest()">
+                  <span x-show="!ingestionLoading">Submit request</span>
+                  <span x-show="ingestionLoading">Submitting…</span>
+                </button>
+              </div>
+            </div>
+          </template>
+          <template x-if="ingestionSubmitted">
+            <div class="card" style="text-align:center;color:var(--muted)">
+              <p style="font-size:1.1rem;margin-bottom:.4rem">✓ Request received</p>
+              <p style="font-size:.87rem">We'll add your property to the index and reach out if we have questions. Usually within a few days.</p>
+            </div>
+          </template>
+        </div>
       </div>
     </template>
 
@@ -376,10 +430,24 @@
         <li>Rate basis toggle: compare like-for-like across PMs</li>
         <li>Weekly briefing email every Sunday</li>
       </ul>
-      <p style="font-size:.84rem;font-weight:700;margin-bottom:1rem">$29/month · $199/season (Apr–Oct)</p>
-      <button class="btn btn-upgrade" style="width:100%;margin-bottom:.5rem"
-              @click="startCheckout()">Upgrade to Pro →</button>
-      <button class="btn btn-outline" style="width:100%" @click="upgradeVisible=false">Maybe later</button>
+      <p style="font-size:.84rem;color:var(--muted);margin-bottom:1rem">Pro is coming soon. We'll notify you when it's ready.</p>
+      <template x-if="!upgradeInterestFlagged">
+        <div>
+          <button class="btn btn-upgrade" style="width:100%;margin-bottom:.5rem"
+                  :disabled="upgradeInterestLoading"
+                  @click="flagUpgradeInterest()">
+            <span x-show="!upgradeInterestLoading">Notify me when Pro launches</span>
+            <span x-show="upgradeInterestLoading">Saving…</span>
+          </button>
+          <button class="btn btn-outline" style="width:100%" @click="upgradeVisible=false">Maybe later</button>
+        </div>
+      </template>
+      <template x-if="upgradeInterestFlagged">
+        <div style="text-align:center;padding:.5rem 0">
+          <p style="color:#2e7d32;font-weight:600">✓ We'll be in touch!</p>
+          <button class="btn btn-outline" style="margin-top:.75rem" @click="upgradeVisible=false">Close</button>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -422,7 +490,15 @@ function ownerHub() {
 
     // UI
     upgradeVisible: false,
+    upgradeInterestLoading: false,
+    upgradeInterestFlagged: false,
     chart: null,
+
+    // Ingestion request form
+    ingestionForm: { contact_email: '', urls_raw: '', description: '', favorite_feature: '', favorite_place: '' },
+    ingestionLoading: false,
+    ingestionError: '',
+    ingestionSubmitted: false,
 
     // ── Init ─────────────────────────────────────────────────────────────────
     async init() {
@@ -448,6 +524,7 @@ function ownerHub() {
         this.token = await this.auth0.getTokenSilently();
         const profile = await this.auth0.getUser();
         this.user = profile;
+        this.ingestionForm.contact_email = profile.email || '';
         await this.loadMe();
       }
       this.loading = false;
@@ -621,10 +698,39 @@ function ownerHub() {
 
     // ── Upgrade ───────────────────────────────────────────────────────────────
     showUpgrade() { this.upgradeVisible = true; },
-    startCheckout() {
-      // Phase 4: Stripe Checkout. For now, direct to email.
-      window.open('mailto:hello@obx.deals?subject=OBX Owner Hub Pro', '_blank');
-      this.upgradeVisible = false;
+
+    async flagUpgradeInterest() {
+      this.upgradeInterestLoading = true;
+      const res = await this.api('/me/upgrade-interest', { method: 'POST', body: '{}' });
+      this.upgradeInterestLoading = false;
+      if (res && res.ok) this.upgradeInterestFlagged = true;
+    },
+
+    // ── Ingestion request ─────────────────────────────────────────────────────
+    async submitIngestionRequest() {
+      this.ingestionError = '';
+      const email = this.ingestionForm.contact_email.trim();
+      const urls  = this.ingestionForm.urls_raw.split('\n').map(u => u.trim()).filter(Boolean);
+      if (!email) { this.ingestionError = 'Contact email is required.'; return; }
+      if (!urls.length) { this.ingestionError = 'At least one URL is required.'; return; }
+
+      this.ingestionLoading = true;
+      const res = await this.api('/me/ingestion-request', {
+        method: 'POST',
+        body: JSON.stringify({
+          contact_email:    email,
+          urls,
+          description:      this.ingestionForm.description.trim() || undefined,
+          favorite_feature: this.ingestionForm.favorite_feature.trim() || undefined,
+          favorite_place:   this.ingestionForm.favorite_place.trim() || undefined,
+        }),
+      });
+      this.ingestionLoading = false;
+      if (res && res.ok) {
+        this.ingestionSubmitted = true;
+      } else {
+        this.ingestionError = 'Something went wrong. Please try again.';
+      }
     },
 
     // ── Helpers ───────────────────────────────────────────────────────────────
