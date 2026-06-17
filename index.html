@@ -461,6 +461,80 @@
 
       </div>
 
+      <!-- ── Orphan gap teaser (free) ──────────────────────────────────────── -->
+      <template x-if="tier === 'free' && gapSummary && gapSummary.gap_count > 0">
+        <div class="card mb1" style="border-left:3px solid #e65100;background:#fffbf7">
+          <p class="section-head" style="color:#e65100">Unbookable gaps detected</p>
+          <p style="font-size:.92rem;margin-bottom:.75rem">
+            <strong x-text="'We found ' + gapSummary.gap_count + ' unbookable gap' + (gapSummary.gap_count !== 1 ? 's' : '') + ' this season'"></strong>
+            <template x-if="gapSummary.est_value > 0">
+              <span x-text="' worth an estimated $' + Math.round(gapSummary.est_value).toLocaleString() + '.'"></span>
+            </template>
+            <template x-if="!gapSummary.est_value || gapSummary.est_value === 0">
+              <span>.</span>
+            </template>
+            These nights can't be booked under your current minimum-stay policy. Upgrade to see the specific dates and take action.
+          </p>
+          <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock Pro — see the gaps →</button>
+        </div>
+      </template>
+
+      <!-- ── Orphan gaps + PDF report (pro) ────────────────────────────────── -->
+      <template x-if="tier !== 'free' && property">
+        <div class="card mb1">
+          <p class="section-head">Unbookable gaps &amp; owner report</p>
+          <template x-if="gapLoading">
+            <div class="spinner"></div>
+          </template>
+          <template x-if="!gapLoading && gapData">
+            <div>
+              <template x-if="gapData.gap_count === 0">
+                <p style="font-size:.9rem;color:#2e7d32;margin-bottom:.75rem">✓ No unbookable gaps detected this season.</p>
+              </template>
+              <template x-if="gapData.gap_count > 0">
+                <div style="margin-bottom:1rem">
+                  <p style="font-size:.9rem;margin-bottom:.5rem">
+                    <strong x-text="gapData.gap_count + ' gap' + (gapData.gap_count !== 1 ? 's' : '') + ' detected'"></strong>
+                    <template x-if="gapData.est_value > 0">
+                      <span x-text="' · Est. recoverable: $' + Math.round(gapData.est_value).toLocaleString()"></span>
+                    </template>
+                    <span style="color:var(--muted);font-size:.82rem"> · Request a min-stay exception from your PM for each window.</span>
+                  </p>
+                  <div style="overflow-x:auto">
+                    <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+                      <thead>
+                        <tr style="background:#f5f5f5">
+                          <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Check-in</th>
+                          <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Check-out</th>
+                          <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Nights</th>
+                          <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Est. value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="g in gapData.gaps" :key="g.checkin">
+                          <tr style="border-bottom:1px solid var(--rule)">
+                            <td style="padding:.3rem .5rem" x-text="g.checkin"></td>
+                            <td style="padding:.3rem .5rem" x-text="g.checkout"></td>
+                            <td style="padding:.3rem .5rem;text-align:right" x-text="g.nights"></td>
+                            <td style="padding:.3rem .5rem;text-align:right" x-text="g.est_rate ? '$'+Math.round(g.est_rate).toLocaleString() : '—'"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </template>
+              <button class="btn btn-primary btn-sm" :disabled="reportLoading" @click="downloadReport()">
+                <span x-text="reportLoading ? 'Generating PDF…' : 'Download owner report (PDF)'"></span>
+              </button>
+              <template x-if="reportError">
+                <p style="color:var(--accent2);font-size:.82rem;margin-top:.5rem" x-text="reportError"></p>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+
       <!-- ── Support form ───────────────────────────────────────────────────── -->
       <div id="support" class="card" style="margin-top:1.5rem">
         <p class="section-head">Contact &amp; feedback</p>
@@ -602,6 +676,13 @@ function ownerHub() {
     paymentSuccess: false,
     chart: null,
 
+    // Gaps + report
+    gapSummary:   null,
+    gapData:      null,
+    gapLoading:   false,
+    reportLoading: false,
+    reportError:   '',
+
     // Support form
     supportSubject:   '',
     supportMessage:   '',
@@ -725,7 +806,9 @@ function ownerHub() {
       this.property = prop;
       await this.loadComps();
       if (this.tier !== 'free') {
-        await Promise.all([this.loadPace(), this.loadRates()]);
+        await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps()]);
+      } else {
+        this.loadGapSummary();
       }
       this.$nextTick(() => this.drawChart());
     },
@@ -733,6 +816,7 @@ function ownerHub() {
     clearProperty() {
       this.property = null; this.compsData = null; this.paceData = null;
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
+      this.gapSummary = null; this.gapData = null; this.reportError = '';
       this.searchQ = ''; this.searchResults = [];
       this.ingestionSubmitted = false; this.ingestionError = '';
       this.ingestionForm.urls_raw = ''; this.ingestionForm.description = '';
@@ -903,6 +987,40 @@ function ownerHub() {
       this.paceLoading = false;
       if (!res || !res.ok) { this.paceError = 'Could not load pace data.'; return; }
       this.paceData = await res.json();
+    },
+
+    // ── Gaps + report ─────────────────────────────────────────────────────────
+    async loadGapSummary() {
+      if (!this.property) return;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/gaps');
+      if (res && res.ok) this.gapSummary = await res.json();
+    },
+
+    async loadGaps() {
+      if (!this.property) return;
+      this.gapLoading = true;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/gaps');
+      this.gapLoading = false;
+      if (res && res.ok) this.gapData = await res.json();
+    },
+
+    async downloadReport() {
+      this.reportError = ''; this.reportLoading = true;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/report');
+      this.reportLoading = false;
+      if (!res || !res.ok) { this.reportError = 'Could not generate report. Please try again.'; return; }
+      const { pdf_b64 } = await res.json();
+      const bytes = Uint8Array.from(atob(pdf_b64), c => c.charCodeAt(0));
+      const blob  = new Blob([bytes], { type: 'application/pdf' });
+      const url   = URL.createObjectURL(blob);
+      const a     = document.createElement('a');
+      a.href      = url;
+      a.download  = (this.property.property_name || id).replace(/[^a-z0-9]/gi, '_') + '_report.pdf';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     },
 
     // ── Upgrade ───────────────────────────────────────────────────────────────
