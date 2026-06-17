@@ -344,6 +344,15 @@
           <div x-show="compsError" class="error-msg" x-text="compsError"></div>
 
           <div x-show="!compsLoading && compsData">
+              <!-- Window toggle -->
+              <div style="display:flex;gap:.4rem;margin-bottom:.6rem">
+                <button class="pill" :class="{active: rateWindow==='8week'}"
+                        @click="rateWindow='8week'; $nextTick(()=>drawChart())">Next 8 weeks</button>
+                <button class="pill" :class="{active: rateWindow==='peak'}"
+                        @click="rateWindow='peak'; $nextTick(()=>drawChart())">Peak (Jun–Aug)</button>
+                <button class="pill" :class="{active: rateWindow==='full'}"
+                        @click="rateWindow='full'; $nextTick(()=>drawChart())">Full season</button>
+              </div>
               <div class="chart-wrap">
                 <canvas id="compsChart"></canvas>
               </div>
@@ -393,11 +402,15 @@
                           <div style="font-size:.72rem;color:var(--muted)"
                                x-text="'p25 $'+Math.round(activeBasesData(w).p25||0).toLocaleString()+
                                        ' · p75 $'+Math.round(activeBasesData(w).p75||0).toLocaleString()"></div>
-                          <template x-if="ownRates[w.week_of]">
+                          <template x-if="ownOpen[w.week_of]">
                             <div style="font-size:.78rem;font-weight:700;margin-top:.2rem"
                                  :style="ratePosition(w)==='above_p75' ? 'color:#c62828' :
                                          ratePosition(w)==='below_p25' ? 'color:#e65100' : 'color:#2e7d32'"
-                                 x-text="'You: $'+Math.round(ownRates[w.week_of]).toLocaleString()"></div>
+                                 x-text="'Open: $'+Math.round(ownOpen[w.week_of]).toLocaleString()"></div>
+                          </template>
+                          <template x-if="ownBooked[w.week_of]">
+                            <div style="font-size:.78rem;font-weight:700;margin-top:.1rem;color:#2d7a3a"
+                                 x-text="'Booked: $'+Math.round(ownBooked[w.week_of]).toLocaleString()"></div>
                           </template>
                           <div style="font-size:.7rem;color:var(--muted)"
                                x-text="'n='+activeBasesData(w).n"></div>
@@ -524,9 +537,11 @@ function ownerHub() {
     paceLoading: false,
     paceError:   '',
 
-    // Own rates (paid — property's published weekly rates from our index)
-    ownRates:    {},   // { week_of: weekly_rate }
+    // Own rates (paid — open weeks from weekly_rates, booked from inferred_bookings)
+    ownOpen:      {},   // { week_of: rate } — orange: currently listed/available
+    ownBooked:    {},   // { week_of: rate } — green: inferred booking clearance
     ownRateBasis: null,
+    rateWindow:   '8week', // '8week' | 'peak' | 'full'
 
     // UI
     upgradeVisible: false,
@@ -650,7 +665,7 @@ function ownerHub() {
 
     clearProperty() {
       this.property = null; this.compsData = null; this.paceData = null;
-      this.ownRates = {}; this.ownRateBasis = null;
+      this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.searchQ = ''; this.searchResults = [];
       this.ingestionSubmitted = false; this.ingestionError = '';
       this.ingestionForm.urls_raw = ''; this.ingestionForm.description = '';
@@ -676,9 +691,17 @@ function ownerHub() {
     },
 
     get filteredWeeks() {
-      return (this.compsData?.weeks || []).filter(w =>
+      const all = (this.compsData?.weeks || []).filter(w =>
         this.activeBases.some(b => w.by_basis && w.by_basis[b])
       );
+      if (this.rateWindow === 'full') return all;
+      if (this.rateWindow === 'peak') {
+        return all.filter(w => { const m = parseInt(w.week_of.slice(5,7),10); return m >= 6 && m <= 8; });
+      }
+      // 8week: rolling 8 weeks from today
+      const today = new Date(); today.setHours(0,0,0,0);
+      const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() + 56);
+      return all.filter(w => { const d = new Date(w.week_of + 'T00:00:00'); return d >= today && d <= cutoff; });
     },
 
     get availableBases() {
@@ -716,8 +739,19 @@ function ownerHub() {
       const p25s    = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p25) : null; });
       const p75s    = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p75) : null; });
       const free    = this.tier === 'free';
-      const ownLine = weeks.map(w => this.ownRates[w.week_of] ? Math.round(this.ownRates[w.week_of]) : null);
-      const hasOwn  = ownLine.some(v => v != null);
+      // Open weeks: orange dots (what you're asking); booked weeks: green dots (what cleared)
+      const openPts   = weeks.map(w => this.ownOpen[w.week_of]   ? Math.round(this.ownOpen[w.week_of])   : null);
+      const bookedPts = weeks.map(w => this.ownBooked[w.week_of] ? Math.round(this.ownBooked[w.week_of]) : null);
+      const hasOpen   = openPts.some(v => v != null);
+      const hasBooked = bookedPts.some(v => v != null);
+
+      const _scatter = (label, data, color) => ({
+        label, data, type: 'line',
+        borderColor: 'transparent', backgroundColor: color,
+        pointBackgroundColor: color, pointBorderColor: '#fff', pointBorderWidth: 1.5,
+        pointRadius: 5, pointHoverRadius: 7,
+        showLine: false, order: 0,
+      });
 
       const datasets = [
         ...(!free ? [
@@ -725,12 +759,8 @@ function ownerHub() {
           { label: 'p75', data: p75s, backgroundColor: 'rgba(30,111,168,.38)', borderRadius: 3 },
         ] : []),
         { label: 'Market p50', data: p50s, backgroundColor: 'rgba(30,111,168,.72)', borderRadius: 3 },
-        ...(hasOwn ? [{
-          label: 'Your rate', data: ownLine, type: 'line',
-          borderColor: '#b04a2c', backgroundColor: 'rgba(176,74,44,.15)',
-          pointBackgroundColor: '#b04a2c', pointRadius: 4, pointHoverRadius: 6,
-          borderWidth: 2.5, tension: 0.2, order: 0,
-        }] : []),
+        ...(hasOpen   ? [_scatter('Your rate (open)',   openPts,   '#b04a2c')] : []),
+        ...(hasBooked ? [_scatter('Your rate (booked)', bookedPts, '#2d7a3a')] : []),
       ];
 
       if (this.chart) {
@@ -746,7 +776,7 @@ function ownerHub() {
         data: { labels, datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: !free || hasOwn } },
+          plugins: { legend: { display: !free || hasOpen || hasBooked } },
           scales: {
             y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } },
             x: { ticks: { maxRotation: 45, font: { size: 10 } } },
@@ -757,21 +787,25 @@ function ownerHub() {
 
     // ── Own rates (paid) ──────────────────────────────────────────────────────
     async loadRates() {
-      this.ownRates = {};
+      this.ownOpen = {}; this.ownBooked = {};
       const id  = this.property.property_id;
       const res = await this.api('/property/' + encodeURIComponent(id) + '/rates');
       if (!res || !res.ok) return;
       const rows = await res.json();
-      const map = {};
-      rows.forEach(r => { map[r.week_of] = r.weekly_rate; });
-      this.ownRates     = map;
-      this.ownRateBasis = rows[0]?.rate_basis || null;
+      const open = {}, booked = {};
+      rows.forEach(r => {
+        if (r.status === 'booked') booked[r.week_of] = r.rate;
+        else                       open[r.week_of]   = r.rate;
+      });
+      this.ownOpen      = open;
+      this.ownBooked    = booked;
+      this.ownRateBasis = rows.find(r => r.rate_basis)?.rate_basis || null;
     },
 
     // Position of own rate vs comp bucket for a given week
     // Returns: 'above_p75' | 'p50_to_p75' | 'p25_to_p50' | 'below_p25' | null
     ratePosition(week) {
-      const own = this.ownRates[week.week_of];
+      const own = this.ownOpen[week.week_of];
       if (own == null) return null;
       const d = this.activeBasesData(week);
       if (!d) return null;
@@ -782,7 +816,7 @@ function ownerHub() {
     },
 
     get rateSummary() {
-      if (!this.compsData || !Object.keys(this.ownRates).length) return null;
+      if (!this.compsData || !Object.keys(this.ownOpen).length) return null;
       let above = 0, at = 0, below = 0, noData = 0;
       this.filteredWeeks.slice(0, 26).forEach(w => {
         const pos = this.ratePosition(w);
