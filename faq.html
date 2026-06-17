@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FAQ — OBX Owner Hub</title>
+  <meta name="description" content="Frequently asked questions about OBX Owner Hub — rental comps, pricing, and your Pro subscription.">
+  <link rel="canonical" href="https://owners.obx.deals/faq">
+
+  <script>if (location.protocol === 'http:') location.replace('https:' + location.href.slice(5));</script>
+
+  <style>
+    :root {
+      --ink:    #1a1a1a;
+      --muted:  #5a5a5a;
+      --rule:   #e0e0e0;
+      --accent: #1e6fa8;
+      --accent2:#b04a2c;
+      --bg:     #fafaf7;
+      --card:   #ffffff;
+      --radius: 8px;
+      --shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           background: var(--bg); color: var(--ink); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header { background: var(--card); border-bottom: 1px solid var(--rule);
+             padding: 0 1.5rem; display: flex; align-items: center;
+             justify-content: space-between; height: 52px; }
+    .logo { font-weight: 700; font-size: 1rem; color: var(--ink); }
+    .logo span { color: var(--accent); }
+
+    .main { max-width: 740px; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+
+    h1 { font-size: 1.75rem; margin-bottom: .4rem; }
+    .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2.5rem; }
+
+    /* Section headings */
+    .section-label {
+      font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted); margin: 2.5rem 0 .75rem;
+      padding-bottom: .4rem; border-bottom: 1px solid var(--rule);
+    }
+
+    /* FAQ accordion */
+    details {
+      border-bottom: 1px solid var(--rule);
+      padding: .05rem 0;
+    }
+    details:last-of-type { border-bottom: none; }
+    summary {
+      cursor: pointer; list-style: none; padding: .9rem .25rem;
+      font-weight: 600; font-size: .95rem; display: flex;
+      justify-content: space-between; align-items: center; gap: 1rem;
+      user-select: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+"; font-size: 1.25rem; color: var(--accent);
+      flex-shrink: 0; line-height: 1; font-weight: 400;
+    }
+    details[open] summary::after { content: "−"; }
+    .answer {
+      padding: 0 .25rem 1rem;
+      color: var(--muted); font-size: .925rem;
+    }
+    .answer p + p { margin-top: .6rem; }
+    .answer ul { margin: .5rem 0 .5rem 1.25rem; }
+    .answer li { margin-bottom: .25rem; }
+
+    /* Video embed */
+    .video-wrap {
+      position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+      border-radius: var(--radius); background: #000; margin: .75rem 0;
+    }
+    .video-wrap iframe {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
+    }
+    .video-placeholder {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; font-size: .9rem; gap: .5rem;
+    }
+    .video-placeholder .play-icon { font-size: 2.5rem; opacity: .7; }
+
+    /* CTA strip */
+    .cta-strip {
+      background: var(--card); border: 1px solid var(--rule);
+      border-radius: var(--radius); padding: 1.5rem;
+      text-align: center; margin-top: 3rem; box-shadow: var(--shadow);
+    }
+    .cta-strip h2 { font-size: 1.1rem; margin-bottom: .4rem; }
+    .cta-strip p  { color: var(--muted); font-size: .9rem; margin-bottom: 1rem; }
+    .btn { display: inline-flex; align-items: center; gap: .4rem;
+           padding: .55rem 1.2rem; border-radius: var(--radius);
+           font-size: .9rem; font-weight: 600; cursor: pointer;
+           border: none; transition: opacity .15s; text-decoration: none; }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-accent2 { background: var(--accent2); color: #fff; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">OBX <span>Owner Hub</span></a>
+  <nav style="display:flex;gap:1rem;font-size:.85rem;">
+    <a href="/">Dashboard</a>
+    <a href="/faq" style="color:var(--ink);font-weight:600;">FAQ</a>
+  </nav>
+</header>
+
+<div class="main">
+  <h1>Frequently asked questions</h1>
+  <p class="subtitle">Can't find what you're looking for? Email <a href="mailto:support@obx.deals">support@obx.deals</a>.</p>
+
+  <!-- ── Getting started ── -->
+  <div class="section-label">Getting started</div>
+
+  <details>
+    <summary>What is OBX Owner Hub?</summary>
+    <div class="answer">
+      <p>Owner Hub is a tool for Outer Banks vacation rental owners who want to understand how their property is priced relative to the market. After signing in, you can look up your property, see a market comp preview for free, and unlock a full rate-by-week breakdown and PDF report with a Pro subscription.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Is it really free to start?</summary>
+    <div class="answer">
+      <p>Yes. Creating an account and viewing the market median (p50) for your property's town and bedroom count costs nothing and requires no credit card. The free preview is designed to show you whether the data is useful before you pay anything.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What do I need to sign up?</summary>
+    <div class="answer">
+      <p>Just a Google or Facebook account — we use those for sign-in so you don't have to create another password. Your email is used only to associate your property and, if you opt in, to send a weekly rate briefing.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>My property isn't showing up in the search. What do I do?</summary>
+    <div class="answer">
+      <p>Our index covers thousands of OBX vacation rentals, but it's not exhaustive — especially properties listed only through direct booking sites or very small local managers. If your property isn't found, email <a href="mailto:support@obx.deals">support@obx.deals</a> with your property name or address and we'll manually add it, usually within a few days.</p>
+    </div>
+  </details>
+
+  <!-- ── Data ── -->
+  <div class="section-label">The data</div>
+
+  <details>
+    <summary>Where does the comp data come from?</summary>
+    <div class="answer">
+      <p>We track publicly available listing data — availability calendars and published rates — across a large set of OBX vacation rentals. The data is refreshed nightly. We don't have access to actual booking counts or private revenue figures.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>How current is it?</summary>
+    <div class="answer">
+      <p>Rates and availability are rebuilt every morning. The comp percentiles you see (p25/p50/p75/p90) reflect the prior night's snapshot. There's typically a 12–18 hour lag between a rate change on a listing and it appearing in your report.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What does "comps" mean here?</summary>
+    <div class="answer">
+      <p>Comps (comparable properties) are other rentals in the same town with the same bedroom count and a similar view classification (oceanfront, ocean-side, or interior). Your rate position is calculated against that peer group — not against the entire OBX market, which would mix beachfront estates with inland cottages.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What do the percentile numbers mean (p25, p50, p75, p90)?</summary>
+    <div class="answer">
+      <p>For each week of the season, we rank all comp properties by their asking rate for that week. p50 is the median — half the comps are priced above it, half below. p25 means you're priced lower than 75% of your peers. p90 means you're in the top 10% by rate.</p>
+      <p>The free tier shows p50 only. Pro unlocks the full spread.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What does the 🔴🟠🟢 color coding mean?</summary>
+    <div class="answer">
+      <ul>
+        <li><strong>🟢 Green</strong> — your rate is at or above market median for that week.</li>
+        <li><strong>🟠 Orange</strong> — your rate is below median but within the lower quartile.</li>
+        <li><strong>🔴 Red</strong> — your rate is below the p25 threshold; you may be leaving money on the table or the week is priced to fill quickly.</li>
+      </ul>
+      <p>Colors reflect position, not performance. A red week isn't necessarily a problem — some owners intentionally price low for early bookings.</p>
+    </div>
+  </details>
+
+  <!-- ── Pro subscription ── -->
+  <div class="section-label">Pro subscription</div>
+
+  <details>
+    <summary>What does Pro include?</summary>
+    <div class="answer">
+      <ul>
+        <li>Full percentile breakdown (p25 / p50 / p75 / p90) for every week of the season</li>
+        <li>Week-by-week rate status indicators (🔴🟠🟢)</li>
+        <li>Downloadable PDF owner report with your full rate sheet</li>
+        <li>Interactive rate sheet — adjust your asking rates and see projected revenue</li>
+        <li>Booking pace data — how quickly your comp set is filling for each week</li>
+        <li>Weekly email briefing with your rate position and any recommended adjustments</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>How much does Pro cost?</summary>
+    <div class="answer">
+      <p>Pro is $199 for the season (April through October) — a one-time charge, not a recurring subscription. There are no monthly fees.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What does "$199 for the season" mean exactly?</summary>
+    <div class="answer">
+      <p>You pay once and have full Pro access through October 31. If you subscribe mid-season, you still get access through October — the price doesn't change based on when you join. We'll offer a new season pass next spring for the 2027 season.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Is my payment secure?</summary>
+    <div class="answer">
+      <p>Yes. Payment is processed by <a href="https://stripe.com" target="_blank" rel="noopener">Stripe</a> — we never see or store your card number. You're redirected to Stripe's hosted checkout page, which handles all payment data. After completing payment you're sent back to your Owner Hub dashboard.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>What is the refund policy?</summary>
+    <div class="answer">
+      <p>If you're not satisfied within 14 days of purchase, email <a href="mailto:support@obx.deals">support@obx.deals</a> and we'll process a full refund. After 14 days, refunds are issued at our discretion. Refunds typically appear on your card within 5–10 business days depending on your bank.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Do I need Pro for every property I own?</summary>
+    <div class="answer">
+      <p>Currently, each account is linked to one primary property. If you own multiple OBX properties and want full reports for each, email us at <a href="mailto:support@obx.deals">support@obx.deals</a> — we can accommodate multi-property accounts on a case-by-case basis while we build out that feature.</p>
+    </div>
+  </details>
+
+  <!-- ── Video walkthrough ── -->
+  <div class="section-label">Video walkthrough</div>
+
+  <details open>
+    <summary>How do I get started? (video)</summary>
+    <div class="answer">
+      <p>A quick walkthrough of signing in, finding your property, and reading your comp report.</p>
+      <!-- Replace src with YouTube embed URL once video is uploaded -->
+      <!-- Format: https://www.youtube.com/embed/VIDEO_ID -->
+      <div class="video-wrap" id="video-intro">
+        <div class="video-placeholder">
+          <span class="play-icon">▶</span>
+          <span>Coming soon</span>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary>How do I read my rate report? (video)</summary>
+    <div class="answer">
+      <p>Explains the percentile columns, color coding, and how to use booking pace to decide when to adjust rates.</p>
+      <div class="video-wrap" id="video-report">
+        <div class="video-placeholder">
+          <span class="play-icon">▶</span>
+          <span>Coming soon</span>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- ── Support ── -->
+  <div class="section-label">Support</div>
+
+  <details>
+    <summary>How do I get help?</summary>
+    <div class="answer">
+      <p>Email <a href="mailto:support@obx.deals">support@obx.deals</a>. We typically respond within one business day. For account or billing issues, include the email address you used to sign up.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>I upgraded but my dashboard still shows Free. What do I do?</summary>
+    <div class="answer">
+      <p>After completing payment, your account is upgraded automatically — usually within a few seconds. If your dashboard still shows Free after signing out and back in, email <a href="mailto:support@obx.deals">support@obx.deals</a> with your account email and we'll resolve it promptly.</p>
+    </div>
+  </details>
+
+  <div class="cta-strip">
+    <h2>Ready to see your numbers?</h2>
+    <p>Free comp preview. No credit card required to start.</p>
+    <a href="/" class="btn btn-primary">Go to dashboard</a>
+    &nbsp;
+    <a href="mailto:support@obx.deals" class="btn" style="border:1.5px solid var(--rule);color:var(--muted);">Contact support</a>
+  </div>
+</div>
+
+</body>
+</html>
