@@ -644,9 +644,8 @@ function ownerHub() {
       await this.loadComps();
       if (this.tier !== 'free') {
         await Promise.all([this.loadPace(), this.loadRates()]);
-        // Redraw once after own rates land so the orange line renders on top of comps
-        this.$nextTick(() => this.drawChart());
       }
+      this.$nextTick(() => this.drawChart());
     },
 
     clearProperty() {
@@ -674,8 +673,6 @@ function ownerHub() {
       (data.weeks || []).forEach(w => Object.keys(w.by_basis || {}).forEach(b => bases.add(b)));
       this.availableBases = [...bases].sort();
       this.activeBases = [...this.availableBases]; // default all on
-
-      this.$nextTick(() => this.drawChart());
     },
 
     get filteredWeeks() {
@@ -711,44 +708,42 @@ function ownerHub() {
     drawChart() {
       const weeks = this.filteredWeeks.slice(0, 26);
       if (!weeks.length) return;
-      const labels = weeks.map(w => this.fmtWeek(w.week_of));
-      const p50s   = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p50) : null; });
-      const p25s   = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p25) : null; });
-      const p75s   = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p75) : null; });
-
       const ctx = document.getElementById('compsChart');
       if (!ctx) return;
-      if (this.chart) this.chart.destroy();
 
-      const free     = this.tier === 'free';
-      const ownLine  = weeks.map(w => this.ownRates[w.week_of] ? Math.round(this.ownRates[w.week_of]) : null);
-      const hasOwn   = ownLine.some(v => v != null);
+      const labels  = weeks.map(w => this.fmtWeek(w.week_of));
+      const p50s    = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p50) : null; });
+      const p25s    = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p25) : null; });
+      const p75s    = weeks.map(w => { const d = this.activeBasesData(w); return d ? Math.round(d.p75) : null; });
+      const free    = this.tier === 'free';
+      const ownLine = weeks.map(w => this.ownRates[w.week_of] ? Math.round(this.ownRates[w.week_of]) : null);
+      const hasOwn  = ownLine.some(v => v != null);
+
+      const datasets = [
+        ...(!free ? [
+          { label: 'p25', data: p25s, backgroundColor: 'rgba(30,111,168,.18)', borderRadius: 3 },
+          { label: 'p75', data: p75s, backgroundColor: 'rgba(30,111,168,.38)', borderRadius: 3 },
+        ] : []),
+        { label: 'Market p50', data: p50s, backgroundColor: 'rgba(30,111,168,.72)', borderRadius: 3 },
+        ...(hasOwn ? [{
+          label: 'Your rate', data: ownLine, type: 'line',
+          borderColor: '#b04a2c', backgroundColor: 'rgba(176,74,44,.15)',
+          pointBackgroundColor: '#b04a2c', pointRadius: 4, pointHoverRadius: 6,
+          borderWidth: 2.5, tension: 0.2, order: 0,
+        }] : []),
+      ];
+
+      if (this.chart) {
+        // Update in-place — avoids Chart.js canvas reuse errors (ADR 0124)
+        this.chart.data.labels   = labels;
+        this.chart.data.datasets = datasets;
+        this.chart.update('none');
+        return;
+      }
 
       this.chart = new Chart(ctx, {
         type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            ...(!free ? [
-              { label: 'p25', data: p25s, backgroundColor: 'rgba(30,111,168,.18)', borderRadius: 3 },
-              { label: 'p75', data: p75s, backgroundColor: 'rgba(30,111,168,.38)', borderRadius: 3 },
-            ] : []),
-            { label: 'Market p50', data: p50s, backgroundColor: 'rgba(30,111,168,.72)', borderRadius: 3 },
-            ...(hasOwn ? [{
-              label: 'Your rate',
-              data: ownLine,
-              type: 'line',
-              borderColor: '#b04a2c',
-              backgroundColor: 'rgba(176,74,44,.15)',
-              pointBackgroundColor: '#b04a2c',
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              borderWidth: 2.5,
-              tension: 0.2,
-              order: 0,
-            }] : []),
-          ],
-        },
+        data: { labels, datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: !free || hasOwn } },
