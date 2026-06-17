@@ -578,6 +578,10 @@ function ownerHub() {
 
     async login() {
       if (!this.authClient) { console.warn('Auth0 not ready yet'); return; }
+      // Clear any stale PKCE state from previous attempts before starting a new flow
+      Object.keys(sessionStorage)
+        .filter(k => k.startsWith('a0.'))
+        .forEach(k => sessionStorage.removeItem(k));
       await this.authClient.loginWithRedirect({
         authorizationParams: { redirect_uri: location.origin + location.pathname },
       });
