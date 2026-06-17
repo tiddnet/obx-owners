@@ -167,8 +167,7 @@
     <div class="hero">
       <h1>Know where your OBX rental <em>actually</em> stands</h1>
       <p>Compare your property to 9,000+ Outer Banks rentals. See the market p50 for free. Unlock full percentile breakdowns, booking pace, and weekly rate status with Pro.</p>
-      <!-- Disabled until auth0 client is ready; then clickable -->
-      <button class="btn btn-primary" @click="login()" :disabled="loading">
+      <button class="btn btn-primary" @click="login()" :disabled="loading || !auth0">
         Get started — it's free
       </button>
     </div>
@@ -541,32 +540,37 @@ function ownerHub() {
 
     // ── Init ─────────────────────────────────────────────────────────────────
     async init() {
-      this.auth0 = await auth0.createAuth0Client({
-        domain:        AUTH0_DOMAIN,
-        clientId:      AUTH0_CLIENT,
-        authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email' },
-        cacheLocation: 'memory',
-      });
+      try {
+        this.auth0 = await auth0.createAuth0Client({
+          domain:        AUTH0_DOMAIN,
+          clientId:      AUTH0_CLIENT,
+          authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email' },
+          cacheLocation: 'memory',
+        });
 
-      // Handle redirect callback
-      if (location.search.includes('code=') || location.search.includes('error=')) {
-        try {
-          await this.auth0.handleRedirectCallback();
-        } catch (e) {
-          console.warn('Redirect callback error:', e);
+        // Handle redirect callback (code exchange after Auth0 login)
+        if (location.search.includes('code=') || location.search.includes('error=')) {
+          try {
+            await this.auth0.handleRedirectCallback();
+          } catch (e) {
+            console.warn('Redirect callback error:', e);
+          }
+          history.replaceState({}, document.title, location.pathname);
         }
-        history.replaceState({}, document.title, location.pathname);
-      }
 
-      const isAuthenticated = await this.auth0.isAuthenticated();
-      if (isAuthenticated) {
-        this.token = await this.auth0.getTokenSilently();
-        const profile = await this.auth0.getUser();
-        this.user = profile;
-        this.ingestionForm.contact_email = profile.email || '';
-        await this.loadMe();
+        const isAuthenticated = await this.auth0.isAuthenticated();
+        if (isAuthenticated) {
+          this.token = await this.auth0.getTokenSilently();
+          const profile = await this.auth0.getUser();
+          this.user = profile;
+          this.ingestionForm.contact_email = profile.email || '';
+          await this.loadMe();
+        }
+      } catch (e) {
+        console.error('Auth0 init error:', e);
+      } finally {
+        this.loading = false;
       }
-      this.loading = false;
     },
 
     async login() {
