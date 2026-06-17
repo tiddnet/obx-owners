@@ -856,7 +856,8 @@ function ownerHub() {
 
     _viewTier(view_type) {
       const vt = (view_type || '').toLowerCase().trim();
-      if (['oceanfront','semi-oceanfront','semi oceanfront','ocean_view','ocean_side','oceanside'].includes(vt)) return 'ocean';
+      if (vt === 'oceanfront') return 'oceanfront';
+      if (['oceanside','ocean_side','ocean_view','semi_oceanfront','semi-oceanfront','semi oceanfront'].includes(vt)) return 'oceanside';
       if (['soundfront','soundside','sound_view','sound front','sound side'].includes(vt)) return 'sound';
       return 'interior';
     },
