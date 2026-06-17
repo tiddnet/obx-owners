@@ -7,6 +7,9 @@
   <meta name="description" content="See how your OBX rental property compares to the market. Free comp preview for every property in our index.">
   <link rel="canonical" href="https://owners.obx.deals/">
 
+  <!-- Force HTTPS — Auth0 SPA SDK requires a secure origin -->
+  <script>if (location.protocol === 'http:') location.replace('https:' + location.href.slice(5));</script>
+
   <!-- Auth0 SPA SDK -->
   <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
   <!-- Alpine.js -->
