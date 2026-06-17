@@ -322,6 +322,11 @@
               </template>
             </div>
             <p style="font-size:.77rem;color:var(--muted)">Rates across OBX use different bases (base rent, rent+fees, fee-inclusive). Toggle to compare like-for-like.</p>
+          <template x-if="ownRateBasis">
+            <p style="font-size:.77rem;color:var(--muted);margin-top:.3rem">
+              Your listed rate basis: <strong x-text="ownRateBasis"></strong>. For best comparison, enable only comps with the same basis.
+            </p>
+          </template>
           </div>
         </template>
 
@@ -349,22 +354,50 @@
                 </div>
               </template>
 
+              <!-- Paid: rate summary bar -->
+              <template x-if="tier !== 'free' && rateSummary && (rateSummary.above + rateSummary.at + rateSummary.below) > 0">
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;margin-bottom:.25rem;align-items:center">
+                  <span style="font-size:.78rem;color:var(--muted);font-weight:600">Your rate position:</span>
+                  <template x-if="rateSummary.above > 0">
+                    <span style="font-size:.78rem;background:#fdecea;color:#c62828;padding:.2rem .55rem;border-radius:20px;font-weight:600"
+                          x-text="rateSummary.above + ' week'+(rateSummary.above>1?'s':'')+' above p75'"></span>
+                  </template>
+                  <template x-if="rateSummary.at > 0">
+                    <span style="font-size:.78rem;background:#e8f5e9;color:#2e7d32;padding:.2rem .55rem;border-radius:20px;font-weight:600"
+                          x-text="rateSummary.at + ' week'+(rateSummary.at>1?'s':'')+' at market'"></span>
+                  </template>
+                  <template x-if="rateSummary.below > 0">
+                    <span style="font-size:.78rem;background:#fff8e1;color:#e65100;padding:.2rem .55rem;border-radius:20px;font-weight:600"
+                          x-text="rateSummary.below + ' week'+(rateSummary.below>1?'s':'')+' below p25'"></span>
+                  </template>
+                </div>
+              </template>
+
               <!-- Paid: weekly breakdown cells -->
               <template x-if="tier !== 'free'">
                 <div class="comp-weeks mt1">
                   <template x-for="w in filteredWeeks" :key="w.week_of">
-                    <div class="week-cell">
+                    <div class="week-cell"
+                         :class="{
+                           'above': ratePosition(w) === 'above_p75',
+                           'at':    ratePosition(w) === 'p50_to_p75' || ratePosition(w) === 'p25_to_p50',
+                           'below': ratePosition(w) === 'below_p25'
+                         }">
                       <div class="date" x-text="fmtWeek(w.week_of)"></div>
                       <template x-if="activeBasesData(w)">
                         <div>
-                          <div class="price" x-text="'$'+Math.round(activeBasesData(w).p50).toLocaleString()">
-                          </div>
+                          <div class="price" x-text="'$'+Math.round(activeBasesData(w).p50).toLocaleString()"></div>
                           <div style="font-size:.72rem;color:var(--muted)"
-                               x-text="'p25: $'+Math.round(activeBasesData(w).p25 || 0).toLocaleString()+
-                                       ' · p75: $'+Math.round(activeBasesData(w).p75 || 0).toLocaleString()">
-                          </div>
-                          <div style="font-size:.72rem;color:var(--muted)"
-                               x-text="'n='+activeBasesData(w).n+' comps'"></div>
+                               x-text="'p25 $'+Math.round(activeBasesData(w).p25||0).toLocaleString()+
+                                       ' · p75 $'+Math.round(activeBasesData(w).p75||0).toLocaleString()"></div>
+                          <template x-if="ownRates[w.week_of]">
+                            <div style="font-size:.78rem;font-weight:700;margin-top:.2rem"
+                                 :style="ratePosition(w)==='above_p75' ? 'color:#c62828' :
+                                         ratePosition(w)==='below_p25' ? 'color:#e65100' : 'color:#2e7d32'"
+                                 x-text="'You: $'+Math.round(ownRates[w.week_of]).toLocaleString()"></div>
+                          </template>
+                          <div style="font-size:.7rem;color:var(--muted)"
+                               x-text="'n='+activeBasesData(w).n"></div>
                         </div>
                       </template>
                     </div>
@@ -488,6 +521,10 @@ function ownerHub() {
     paceLoading: false,
     paceError:   '',
 
+    // Own rates (paid — property's published weekly rates from our index)
+    ownRates:    {},   // { week_of: weekly_rate }
+    ownRateBasis: null,
+
     // UI
     upgradeVisible: false,
     upgradeInterestLoading: false,
@@ -592,12 +629,18 @@ function ownerHub() {
       prop.view_tier = this._viewTier(prop.view_type);
       this.property = prop;
       await this.loadComps();
-      if (this.tier !== 'free') await this.loadPace();
+      if (this.tier !== 'free') {
+        await Promise.all([this.loadPace(), this.loadRates()]);
+      }
     },
 
     clearProperty() {
       this.property = null; this.compsData = null; this.paceData = null;
+      this.ownRates = {}; this.ownRateBasis = null;
       this.searchQ = ''; this.searchResults = [];
+      this.ingestionSubmitted = false; this.ingestionError = '';
+      this.ingestionForm.urls_raw = ''; this.ingestionForm.description = '';
+      this.ingestionForm.favorite_feature = ''; this.ingestionForm.favorite_place = '';
       if (this.chart) { this.chart.destroy(); this.chart = null; }
     },
 
@@ -662,28 +705,85 @@ function ownerHub() {
       if (!ctx) return;
       if (this.chart) this.chart.destroy();
 
-      const free = this.tier === 'free';
+      const free     = this.tier === 'free';
+      const ownLine  = weeks.map(w => this.ownRates[w.week_of] ? Math.round(this.ownRates[w.week_of]) : null);
+      const hasOwn   = ownLine.some(v => v != null);
+
       this.chart = new Chart(ctx, {
         type: 'bar',
         data: {
           labels,
           datasets: [
-            { label: 'p50 (median)', data: p50s, backgroundColor: 'rgba(30,111,168,.75)', borderRadius: 3 },
             ...(!free ? [
-              { label: 'p25', data: p25s, backgroundColor: 'rgba(30,111,168,.25)', borderRadius: 3 },
-              { label: 'p75', data: p75s, backgroundColor: 'rgba(30,111,168,.45)', borderRadius: 3 },
+              { label: 'p25', data: p25s, backgroundColor: 'rgba(30,111,168,.18)', borderRadius: 3 },
+              { label: 'p75', data: p75s, backgroundColor: 'rgba(30,111,168,.38)', borderRadius: 3 },
             ] : []),
+            { label: 'Market p50', data: p50s, backgroundColor: 'rgba(30,111,168,.72)', borderRadius: 3 },
+            ...(hasOwn ? [{
+              label: 'Your rate',
+              data: ownLine,
+              type: 'line',
+              borderColor: '#b04a2c',
+              backgroundColor: 'rgba(176,74,44,.15)',
+              pointBackgroundColor: '#b04a2c',
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              borderWidth: 2.5,
+              tension: 0.2,
+              order: 0,
+            }] : []),
           ],
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: !free } },
+          plugins: { legend: { display: !free || hasOwn } },
           scales: {
             y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k' } },
             x: { ticks: { maxRotation: 45, font: { size: 10 } } },
           },
         },
       });
+    },
+
+    // ── Own rates (paid) ──────────────────────────────────────────────────────
+    async loadRates() {
+      this.ownRates = {};
+      const id  = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/rates');
+      if (!res || !res.ok) return;
+      const rows = await res.json();
+      const map = {};
+      rows.forEach(r => { map[r.week_of] = r.weekly_rate; });
+      this.ownRates     = map;
+      this.ownRateBasis = rows[0]?.rate_basis || null;
+      // Redraw chart now that own rates are available
+      this.$nextTick(() => this.drawChart());
+    },
+
+    // Position of own rate vs comp bucket for a given week
+    // Returns: 'above_p75' | 'p50_to_p75' | 'p25_to_p50' | 'below_p25' | null
+    ratePosition(week) {
+      const own = this.ownRates[week.week_of];
+      if (own == null) return null;
+      const d = this.activeBasesData(week);
+      if (!d) return null;
+      if (own > d.p75)  return 'above_p75';
+      if (own > d.p50)  return 'p50_to_p75';
+      if (own > d.p25)  return 'p25_to_p50';
+      return 'below_p25';
+    },
+
+    get rateSummary() {
+      if (!this.compsData || !Object.keys(this.ownRates).length) return null;
+      let above = 0, at = 0, below = 0, noData = 0;
+      this.filteredWeeks.slice(0, 26).forEach(w => {
+        const pos = this.ratePosition(w);
+        if (!pos) { noData++; return; }
+        if (pos === 'above_p75')  above++;
+        else if (pos === 'below_p25') below++;
+        else at++;
+      });
+      return { above, at, below, noData };
     },
 
     // ── Booking pace ──────────────────────────────────────────────────────────
