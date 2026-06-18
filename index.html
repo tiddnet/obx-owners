@@ -56,6 +56,7 @@
                    color: var(--accent); }
     .btn-sm { padding: .35rem .85rem; font-size: .82rem; }
     .btn-upgrade { background: var(--accent2); color: #fff; }
+    .link-btn { background: none; border: none; padding: 0; color: var(--accent); font-size: .82rem; cursor: pointer; text-decoration: underline; }
 
     /* ── Cards ── */
     .card { background: var(--card); border: 1px solid var(--rule);
@@ -539,70 +540,84 @@
 
     </template>
 
-    <!-- ── Account settings (Pro) ────────────────────────────────────────── -->
-    <template x-if="tier !== 'free' && user">
-        <div class="card" style="margin-top:1.5rem">
-          <p class="section-head">Account settings</p>
-          <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0">
-            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-              <input type="checkbox"
-                     :checked="briefingEnabled"
-                     @change="toggleBriefing($event.target.checked)"
-                     style="width:16px;height:16px;cursor:pointer">
-              <span style="font-size:.9rem">Weekly rate briefing email (every Sunday)</span>
-            </label>
-          </div>
-          <p style="font-size:.78rem;color:var(--muted);margin-top:.25rem">
-            Rate position vs. comps for all open weeks, delivered to your inbox before the new week opens.
-          </p>
-          <template x-if="briefingLoading">
-            <p style="font-size:.8rem;color:var(--muted);margin-top:.25rem">Saving…</p>
+    <!-- ── Footer links ─────────────────────────────────────────────────────── -->
+    <template x-if="user">
+      <div style="margin-top:2rem;padding:1rem 0;border-top:1px solid var(--rule);display:flex;gap:1.25rem;font-size:.82rem">
+        <button class="link-btn" @click="supportOpen=!supportOpen;settingsOpen=false">Contact</button>
+        <template x-if="tier !== 'free'">
+          <button class="link-btn" @click="settingsOpen=!settingsOpen;supportOpen=false">Settings</button>
+        </template>
+      </div>
+    </template>
+
+    <!-- ── Account settings (Pro, collapsed) ───────────────────────────────── -->
+    <template x-if="settingsOpen && tier !== 'free' && user">
+      <div class="card" style="margin-bottom:1.5rem">
+        <p class="section-head">Account settings</p>
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox"
+                   :checked="briefingEnabled"
+                   @change="toggleBriefing($event.target.checked)"
+                   style="width:16px;height:16px;cursor:pointer">
+            <span style="font-size:.9rem">Weekly rate briefing email (every Sunday)</span>
+          </label>
+        </div>
+        <p style="font-size:.78rem;color:var(--muted);margin-top:.25rem">
+          Rate position vs. comps for all open weeks, delivered to your inbox before the new week opens.
+        </p>
+        <template x-if="briefingLoading">
+          <p style="font-size:.8rem;color:var(--muted);margin-top:.25rem">Saving…</p>
+        </template>
+        <template x-if="briefingSaved">
+          <p style="font-size:.8rem;color:#2e7d32;margin-top:.25rem">Preference saved.</p>
+        </template>
+      </div>
+    </template>
+
+    <!-- ── Support form (collapsed) ─────────────────────────────────────────── -->
+    <div id="support">
+      <template x-if="supportOpen && user">
+        <div class="card" style="margin-bottom:1.5rem">
+          <p class="section-head">Contact &amp; feedback</p>
+          <template x-if="supportSubmitted">
+            <p style="color:#2e7d32;font-weight:600;padding:.5rem 0">
+              ✓ Your message was received. We'll follow up if needed.
+            </p>
           </template>
-          <template x-if="briefingSaved">
-            <p style="font-size:.8rem;color:#2e7d32;margin-top:.25rem">Preference saved.</p>
+          <template x-if="!supportSubmitted">
+            <div>
+              <div style="margin-bottom:.75rem">
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Subject</label>
+                <select x-model="supportSubject"
+                        style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.5rem .75rem;font-size:.9rem;background:var(--card)">
+                  <option value="">Select a topic…</option>
+                  <option value="missing_property">Missing property</option>
+                  <option value="billing">Billing</option>
+                  <option value="report_question">Report question</option>
+                  <option value="feature_request">Feature request</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div style="margin-bottom:.75rem">
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Message</label>
+                <textarea x-model="supportMessage" rows="4"
+                          placeholder="Describe your question or request…"
+                          style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.5rem .75rem;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
+              </div>
+              <button class="btn btn-primary btn-sm"
+                      :disabled="supportLoading || !supportSubject || supportMessage.length < 10"
+                      @click="submitSupport()">
+                <span x-text="supportLoading ? 'Sending…' : 'Send message'"></span>
+              </button>
+              <template x-if="supportError">
+                <p style="color:var(--accent2);font-size:.82rem;margin-top:.5rem" x-text="supportError"></p>
+              </template>
+            </div>
           </template>
         </div>
       </template>
-
-      <!-- ── Support form ───────────────────────────────────────────────────── -->
-      <div id="support" class="card" style="margin-top:1.5rem">
-        <p class="section-head">Contact &amp; feedback</p>
-        <template x-if="supportSubmitted">
-          <p style="color:#2e7d32;font-weight:600;padding:.5rem 0">
-            ✓ Your message was received. We'll follow up if needed.
-          </p>
-        </template>
-        <template x-if="!supportSubmitted">
-          <div>
-            <div style="margin-bottom:.75rem">
-              <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Subject</label>
-              <select x-model="supportSubject"
-                      style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.5rem .75rem;font-size:.9rem;background:var(--card)">
-                <option value="">Select a topic…</option>
-                <option value="missing_property">Missing property</option>
-                <option value="billing">Billing</option>
-                <option value="report_question">Report question</option>
-                <option value="feature_request">Feature request</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div style="margin-bottom:.75rem">
-              <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem">Message</label>
-              <textarea x-model="supportMessage" rows="4"
-                        placeholder="Describe your question or request…"
-                        style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.5rem .75rem;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
-            </div>
-            <button class="btn btn-primary btn-sm"
-                    :disabled="supportLoading || !supportSubject || supportMessage.length < 10"
-                    @click="submitSupport()">
-              <span x-text="supportLoading ? 'Sending…' : 'Send message'"></span>
-            </button>
-            <template x-if="supportError">
-              <p style="color:var(--accent2);font-size:.82rem;margin-top:.5rem" x-text="supportError"></p>
-            </template>
-          </div>
-        </template>
-      </div>
+    </div>
 
   </div>
 </template>
@@ -701,8 +716,6 @@ function ownerHub() {
     upgradeInterestFlagged: false,
     checkoutLoading: false,
     paymentSuccess: false,
-    chart: null,
-
     // Gaps + report
     gapSummary:   null,
     gapData:      null,
@@ -721,6 +734,8 @@ function ownerHub() {
     supportLoading:   false,
     supportSubmitted: false,
     supportError:     '',
+    supportOpen:      false,
+    settingsOpen:     false,
 
     // Ingestion request form
     ingestionForm: { contact_email: '', urls_raw: '', description: '', favorite_feature: '', favorite_place: '' },
@@ -871,7 +886,8 @@ function ownerHub() {
       this.ingestionSubmitted = false; this.ingestionError = '';
       this.ingestionForm.urls_raw = ''; this.ingestionForm.description = '';
       this.ingestionForm.favorite_feature = ''; this.ingestionForm.favorite_place = '';
-      if (this.chart) { this.chart.destroy(); this.chart = null; }
+      const oldCtx = document.getElementById('compsChart');
+      if (oldCtx?._chart) { oldCtx._chart.destroy(); delete oldCtx._chart; }
     },
 
     // ── Comps ─────────────────────────────────────────────────────────────────
@@ -969,15 +985,17 @@ function ownerHub() {
         ...(hasBooked ? [_scatter('Your rate (booked)', bookedPts, '#2d7a3a')] : []),
       ];
 
-      if (this.chart) {
+      if (ctx._chart) {
         // Update in-place — avoids Chart.js canvas reuse errors (ADR 0124)
-        this.chart.data.labels   = labels;
-        this.chart.data.datasets = datasets;
-        this.chart.update('none');
+        // Stored on the canvas element (not Alpine reactive data) so Alpine's
+        // proxy doesn't wrap the Chart.js instance and break chart.update().
+        ctx._chart.data.labels   = labels;
+        ctx._chart.data.datasets = datasets;
+        ctx._chart.update('none');
         return;
       }
 
-      this.chart = new Chart(ctx, {
+      ctx._chart = new Chart(ctx, {
         type: 'bar',
         data: { labels, datasets },
         options: {
