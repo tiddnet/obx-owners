@@ -628,6 +628,25 @@
       <template x-if="briefingSaved">
         <p style="font-size:.8rem;color:#2e7d32;margin-top:.5rem">Preference saved.</p>
       </template>
+
+      <hr style="border:0;border-top:1px solid var(--rule);margin:1.1rem 0">
+
+      <label style="display:flex;align-items:center;gap:.65rem;cursor:pointer">
+        <input type="checkbox"
+               :checked="featuredEnabled"
+               @change="toggleFeatured($event.target.checked)"
+               style="width:16px;height:16px;cursor:pointer">
+        <span style="font-size:.9rem">Feature my property on <a href="https://obx.deals" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">obx.deals</a></span>
+      </label>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:.5rem">
+        Your property rotates into the Featured section on the obx.deals daily deals page — seen by guests browsing price drops and quick getaways.
+      </p>
+      <template x-if="featuredLoading">
+        <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">Saving…</p>
+      </template>
+      <template x-if="featuredSaved">
+        <p style="font-size:.8rem;color:#2e7d32;margin-top:.5rem">Preference saved.</p>
+      </template>
     </div>
   </div>
 </template>
@@ -738,6 +757,11 @@ function ownerHub() {
     briefingLoading: false,
     briefingSaved:   false,
 
+    // Featured pool settings
+    featuredEnabled: false,
+    featuredLoading: false,
+    featuredSaved:   false,
+
     // Support form
     supportSubject:   '',
     supportMessage:   '',
@@ -831,6 +855,7 @@ function ownerHub() {
       this.tier            = data.tier || 'free';
       this.features        = data.features || {};
       this.briefingEnabled = !!data.briefing_enabled;
+      this.featuredEnabled = !!data.featured;
       if (data.property_id) await this.loadProperty(data.property_id);
     },
 
@@ -845,6 +870,19 @@ function ownerHub() {
       this.briefingLoading = false;
       this.briefingSaved   = true;
       setTimeout(() => { this.briefingSaved = false; }, 2500);
+    },
+
+    async toggleFeatured(featured) {
+      this.featuredEnabled = featured;
+      this.featuredLoading = true;
+      this.featuredSaved   = false;
+      await this.api('/me/featured', {
+        method: 'POST',
+        body: JSON.stringify({ featured }),
+      });
+      this.featuredLoading = false;
+      this.featuredSaved   = true;
+      setTimeout(() => { this.featuredSaved = false; }, 2500);
     },
 
     // ── Property search ───────────────────────────────────────────────────────
