@@ -834,10 +834,14 @@ function ownerHub() {
     async selectProperty(r) {
       this.searchResults = [];
       await this.loadProperty(r.property_id);
-      // Save to user record
+      // Save to user record; include email + first_name so briefing emailer has them
       await this.api('/me/property', {
         method: 'POST',
-        body: JSON.stringify({ property_id: r.property_id }),
+        body: JSON.stringify({
+          property_id: r.property_id,
+          email:       this.user?.email || '',
+          first_name:  this.user?.given_name || this.user?.name?.split(' ')[0] || '',
+        }),
       });
     },
 
