@@ -480,16 +480,9 @@
       <!-- ── Orphan gap teaser (free) ──────────────────────────────────────── -->
       <template x-if="tier === 'free' && gapSummary && gapSummary.gap_count > 0">
         <div class="card mb1" style="border-left:3px solid #e65100;background:#fffbf7">
-          <p class="section-head" style="color:#e65100">Unbookable gaps detected</p>
+          <p class="section-head" style="color:#e65100">Possible availability gaps</p>
           <p style="font-size:.92rem;margin-bottom:.75rem">
-            <strong x-text="'We found ' + gapSummary.gap_count + ' unbookable gap' + (gapSummary.gap_count !== 1 ? 's' : '') + ' this season'"></strong>
-            <template x-if="gapSummary.est_value > 0">
-              <span x-text="' worth an estimated $' + Math.round(gapSummary.est_value).toLocaleString() + '.'"></span>
-            </template>
-            <template x-if="!gapSummary.est_value || gapSummary.est_value === 0">
-              <span>.</span>
-            </template>
-            These nights can't be booked under your current minimum-stay policy. Upgrade to see the specific dates and take action.
+            We may have spotted <strong x-text="gapSummary.gap_count + ' gap' + (gapSummary.gap_count !== 1 ? 's' : '')"></strong> this season where available nights fall between bookings and might be hard to fill under your current minimum-stay policy. Upgrade to see the specific dates.
           </p>
           <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock Pro — see the gaps →</button>
         </div>
