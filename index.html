@@ -348,11 +348,11 @@
               <!-- Window toggle -->
               <div style="display:flex;gap:.4rem;margin-bottom:.6rem">
                 <button class="pill" :class="{active: rateWindow==='8week'}"
-                        @click="rateWindow='8week'; $nextTick(()=>drawChart())">Next 8 weeks</button>
+                        @click="setRateWindow('8week')">Next 8 weeks</button>
                 <button class="pill" :class="{active: rateWindow==='peak'}"
-                        @click="rateWindow='peak'; $nextTick(()=>drawChart())">Peak (Jun–Aug)</button>
+                        @click="setRateWindow('peak')">Peak (Jun–Aug)</button>
                 <button class="pill" :class="{active: rateWindow==='full'}"
-                        @click="rateWindow='full'; $nextTick(()=>drawChart())">Full season</button>
+                        @click="setRateWindow('full')">Full season</button>
               </div>
               <div class="chart-wrap">
                 <canvas id="compsChart"></canvas>
@@ -535,8 +535,12 @@
         </div>
       </template>
 
-      <!-- ── Account settings (Pro) ────────────────────────────────────────── -->
-      <template x-if="tier !== 'free'">
+      </div>
+
+    </template>
+
+    <!-- ── Account settings (Pro) ────────────────────────────────────────── -->
+    <template x-if="tier !== 'free' && user">
         <div class="card" style="margin-top:1.5rem">
           <p class="section-head">Account settings</p>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0">
@@ -599,8 +603,6 @@
           </div>
         </template>
       </div>
-
-    </template>
 
   </div>
 </template>
@@ -915,6 +917,11 @@ function ownerHub() {
       const avg = (key) => entries.reduce((s,e) => s + (e[key]||0), 0) / entries.length;
       return { p25: avg('p25'), p50: avg('p50'), p75: avg('p75'), p90: avg('p90'),
                n: entries.reduce((s,e) => s + (e.n||0), 0) };
+    },
+
+    setRateWindow(w) {
+      this.rateWindow = w;
+      this.$nextTick(() => this.drawChart());
     },
 
     toggleBasis(b) {
