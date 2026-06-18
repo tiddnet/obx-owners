@@ -163,21 +163,19 @@
       <button class="btn btn-primary btn-sm" @click="login()">Sign in</button>
     </template>
     <template x-if="!loading && user">
-      <div style="position:relative">
-        <button class="hamburger" @click="menuOpen=!menuOpen" aria-label="Menu">☰</button>
-        <template x-if="menuOpen">
-          <div class="menu-dropdown" @click.outside="menuOpen=false">
-            <div style="padding:.5rem 1rem .35rem;font-size:.75rem;color:var(--muted);border-bottom:1px solid var(--rule)"
-                 x-text="user.email"></div>
-            <button class="menu-item" @click="supportOpen=true;menuOpen=false">Contact &amp; feedback</button>
-            <template x-if="tier !== 'free'">
-              <button class="menu-item" @click="settingsOpen=true;menuOpen=false">Settings</button>
-            </template>
-            <div style="border-top:1px solid var(--rule);margin-top:.25rem">
-              <button class="menu-item" @click="logout()">Sign out</button>
-            </div>
+      <div style="position:relative" @click.outside="menuOpen=false">
+        <button class="hamburger" @click.stop="menuOpen=!menuOpen" aria-label="Menu">☰</button>
+        <div class="menu-dropdown" x-show="menuOpen" @click.stop style="display:none">
+          <div style="padding:.5rem 1rem .35rem;font-size:.75rem;color:var(--muted);border-bottom:1px solid var(--rule)"
+               x-text="user.email"></div>
+          <button class="menu-item" @click="supportOpen=true;menuOpen=false">Contact &amp; feedback</button>
+          <template x-if="tier !== 'free'">
+            <button class="menu-item" @click="settingsOpen=true;menuOpen=false">Settings</button>
+          </template>
+          <div style="border-top:1px solid var(--rule);margin-top:.25rem">
+            <button class="menu-item" @click="logout()">Sign out</button>
           </div>
-        </template>
+        </div>
       </div>
     </template>
   </div>
