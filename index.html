@@ -521,6 +521,80 @@
           </div>
         </template>
 
+        <!-- ── Verified View Badge (Pro) ──────────────────────────────────── -->
+        <template x-if="tier !== 'free' && viewBadge && viewBadge.eligible">
+          <div class="card mb1" style="border-left:3px solid #15803d;background:#f0fdf4">
+            <p class="section-head" style="color:#15803d">✓ Verified View Badge</p>
+
+            <!-- verified -->
+            <template x-if="viewBadge.status === 'verified'">
+              <div>
+                <p style="font-size:.9rem;margin-bottom:.6rem">
+                  Your ocean view is independently verified by GIS sight-line analysis and confirmed photo.
+                  <strong>View score: <span x-text="viewBadge.view_score"></span>/100</strong>
+                  · <span x-text="viewBadge.view_class ? viewBadge.view_class.replace(/_/g,' ') : ''"></span>
+                  · <span x-text="Math.round(viewBadge.ft_ocean)"></span> ft to ocean
+                </p>
+                <a :href="viewBadge.badge_url" target="_blank" rel="noopener"
+                   class="btn btn-primary btn-sm">View your badge page →</a>
+                <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
+                  Verified <span x-text="viewBadge.verified_at ? viewBadge.verified_at.slice(0,10) : ''"></span>.
+                  Share the badge page URL on your listing to signal view quality to guests independently of your PM.
+                </p>
+              </div>
+            </template>
+
+            <!-- submitted — awaiting review -->
+            <template x-if="viewBadge.status === 'submitted'">
+              <div>
+                <p style="font-size:.9rem;margin-bottom:.4rem">
+                  Photo received — review in progress. You'll hear back within 48 hours.
+                </p>
+                <p style="font-size:.77rem;color:var(--muted)">
+                  GIS score: <strong x-text="viewBadge.view_score"></strong>/100
+                  · <span x-text="viewBadge.view_class ? viewBadge.view_class.replace(/_/g,' ') : ''"></span>
+                  · <span x-text="Math.round(viewBadge.ft_ocean)"></span> ft to ocean
+                  · <span x-text="Math.round(viewBadge.pct_clear)"></span>% rays clear
+                </p>
+              </div>
+            </template>
+
+            <!-- unclaimed — show CTA -->
+            <template x-if="viewBadge.status === 'unclaimed' || viewBadge.status === 'invited'">
+              <div>
+                <p style="font-size:.9rem;margin-bottom:.5rem">
+                  Our GIS sight-line analysis independently scores your ocean view.
+                  Submit a photo from your deck to claim your badge.
+                </p>
+                <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.65rem">
+                  <div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#15803d" x-text="viewBadge.view_score"></div>
+                    <div style="font-size:.72rem;color:var(--muted)">view score (0–100)</div>
+                  </div>
+                  <div>
+                    <div style="font-size:1.1rem;font-weight:600" x-text="viewBadge.view_class ? viewBadge.view_class.replace(/_/g,' ') : '—'"></div>
+                    <div style="font-size:.72rem;color:var(--muted)">GIS classification</div>
+                  </div>
+                  <div>
+                    <div style="font-size:1.1rem;font-weight:600" x-text="Math.round(viewBadge.ft_ocean) + ' ft'"></div>
+                    <div style="font-size:.72rem;color:var(--muted)">to ocean</div>
+                  </div>
+                  <div>
+                    <div style="font-size:1.1rem;font-weight:600" x-text="Math.round(viewBadge.pct_clear) + '%'"></div>
+                    <div style="font-size:.72rem;color:var(--muted)">rays clear</div>
+                  </div>
+                </div>
+                <a :href="viewBadge.submit_url" target="_blank" rel="noopener"
+                   class="btn btn-primary btn-sm">Claim your Verified View badge →</a>
+                <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
+                  Once verified, your badge appears on search.obx.deals results and links guests to your badge page —
+                  independent third-party confirmation that no PM listing can replicate.
+                </p>
+              </div>
+            </template>
+          </div>
+        </template>
+
       </div>
 
       <!-- ── Orphan gap teaser (free) ──────────────────────────────────────── -->
@@ -773,6 +847,7 @@ function ownerHub() {
     // Pace
     paceData:    null,
     paceLoading: false,
+    viewBadge:   null,
     paceError:   '',
 
     // Own rates (paid — open weeks from weekly_rates, booked from inferred_bookings)
@@ -1024,15 +1099,22 @@ function ownerHub() {
       this.loadVisibility();
       await this.loadComps();
       if (this.tier !== 'free') {
-        await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps()]);
+        await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps(), this.loadViewBadge()]);
       } else {
         this.loadGapSummary();
       }
       this.$nextTick(() => this.drawChart());
     },
 
+    async loadViewBadge() {
+      this.viewBadge = null;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/view-badge');
+      if (res && res.ok) this.viewBadge = await res.json();
+    },
+
     clearProperty() {
-      this.property = null; this.compsData = null; this.paceData = null;
+      this.property = null; this.compsData = null; this.paceData = null; this.viewBadge = null;
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.gapSummary = null; this.gapData = null; this.reportError = '';
       this.searchQ = ''; this.searchResults = [];
