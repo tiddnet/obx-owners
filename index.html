@@ -593,6 +593,80 @@
             </template>
           </div>
 
+        <!-- ── Verified Sound View Badge (Pro) ───────────────────────────────── -->
+        <div x-show="tier !== 'free' && soundBadge && soundBadge.eligible"
+             class="card mb1" style="border-left:3px solid #0369a1;background:#f0f9ff;display:none">
+          <p class="section-head" style="color:#0369a1">✓ Verified Sound View Badge</p>
+
+          <!-- verified -->
+          <template x-if="soundBadge.status === 'verified'">
+            <div>
+              <p style="font-size:.9rem;margin-bottom:.6rem">
+                Your sound view is independently verified by GIS sight-line analysis and confirmed photo.
+                <strong>Sound score: <span x-text="soundBadge.sound_score"></span>/100</strong>
+                · <span x-text="soundBadge.sound_class ? soundBadge.sound_class.replace(/_/g,' ') : ''"></span>
+                · <span x-text="Math.round(soundBadge.ft_sound)"></span> ft to sound
+              </p>
+              <a :href="soundBadge.badge_url" target="_blank" rel="noopener"
+                 class="btn btn-primary btn-sm">View your badge page →</a>
+              <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
+                Verified <span x-text="soundBadge.verified_at ? soundBadge.verified_at.slice(0,10) : ''"></span>.
+              </p>
+            </div>
+          </template>
+
+          <!-- submitted -->
+          <template x-if="soundBadge.status === 'submitted'">
+            <div>
+              <p style="font-size:.9rem;margin-bottom:.4rem">
+                Photo received — review in progress. You'll hear back within 48 hours.
+              </p>
+              <p style="font-size:.77rem;color:var(--muted)">
+                GIS score: <strong x-text="soundBadge.sound_score"></strong>/100
+                · <span x-text="soundBadge.sound_class ? soundBadge.sound_class.replace(/_/g,' ') : ''"></span>
+                · <span x-text="Math.round(soundBadge.ft_sound)"></span> ft to sound
+              </p>
+            </div>
+          </template>
+
+          <!-- unclaimed / invited -->
+          <template x-if="soundBadge.status === 'unclaimed' || soundBadge.status === 'invited'">
+            <div>
+              <p style="font-size:.9rem;margin-bottom:.5rem">
+                Our GIS sight-line analysis independently scores your sound view.
+                Submit a photo from your deck looking toward the sound to claim your badge.
+              </p>
+              <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.65rem">
+                <div>
+                  <div style="font-size:1.6rem;font-weight:700;color:#0369a1" x-text="soundBadge.sound_score"></div>
+                  <div style="font-size:.72rem;color:var(--muted)">sound score (0–100)</div>
+                </div>
+                <div>
+                  <div style="font-size:1.1rem;font-weight:600" x-text="soundBadge.sound_class ? soundBadge.sound_class.replace(/_/g,' ') : '—'"></div>
+                  <div style="font-size:.72rem;color:var(--muted)">GIS classification</div>
+                </div>
+                <div>
+                  <div style="font-size:1.1rem;font-weight:600" x-text="Math.round(soundBadge.ft_sound) + ' ft'"></div>
+                  <div style="font-size:.72rem;color:var(--muted)">to sound</div>
+                </div>
+                <template x-if="soundBadge.sound_body">
+                  <div>
+                    <div style="font-size:1.1rem;font-weight:600" x-text="soundBadge.sound_body ? soundBadge.sound_body.replace(/_/g,' ') : ''"></div>
+                    <div style="font-size:.72rem;color:var(--muted)" x-text="soundBadge.wind_tier ? soundBadge.wind_tier + ' wind' : 'water body'"></div>
+                  </div>
+                </template>
+              </div>
+              <a href="mailto:verify@obx.deals?subject=Sound+View+Badge+Claim"
+                 class="btn btn-primary btn-sm">Claim your Verified Sound View badge →</a>
+              <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
+                Email us a photo from your deck toward the sound. Once verified, your badge
+                appears on search.obx.deals results — independent third-party confirmation
+                of your sound view quality.
+              </p>
+            </div>
+          </template>
+        </div>
+
       <!-- ── Orphan gap teaser (free) ──────────────────────────────────────── -->
       <template x-if="tier === 'free' && gapSummary && gapSummary.gap_count > 0">
         <div class="card mb1" style="border-left:3px solid #e65100;background:#fffbf7">
@@ -844,6 +918,7 @@ function ownerHub() {
     paceData:    null,
     paceLoading: false,
     viewBadge:   { eligible: false },
+    soundBadge:  { eligible: false },
     paceError:   '',
 
     // Own rates (paid — open weeks from weekly_rates, booked from inferred_bookings)
@@ -1095,7 +1170,7 @@ function ownerHub() {
       this.loadVisibility();
       await this.loadComps();
       if (this.tier !== 'free') {
-        await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps(), this.loadViewBadge()]);
+        await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps(), this.loadViewBadge(), this.loadSoundBadge()]);
       } else {
         this.loadGapSummary();
       }
@@ -1109,8 +1184,16 @@ function ownerHub() {
       if (res && res.ok) this.viewBadge = await res.json();
     },
 
+    async loadSoundBadge() {
+      this.soundBadge = { eligible: false };
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/sound-badge');
+      if (res && res.ok) this.soundBadge = await res.json();
+    },
+
     clearProperty() {
-      this.property = null; this.compsData = null; this.paceData = null; this.viewBadge = { eligible: false };
+      this.property = null; this.compsData = null; this.paceData = null;
+      this.viewBadge = { eligible: false }; this.soundBadge = { eligible: false };
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.gapSummary = null; this.gapData = null; this.reportError = '';
       this.searchQ = ''; this.searchResults = [];
