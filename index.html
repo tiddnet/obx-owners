@@ -583,11 +583,59 @@
                     <div style="font-size:.72rem;color:var(--muted)">rays clear</div>
                   </div>
                 </div>
-                <a :href="viewBadge.submit_url" target="_blank" rel="noopener"
-                   class="btn btn-primary btn-sm">Claim your Verified View badge →</a>
-                <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
-                  Once verified, your badge appears on search.obx.deals results and links guests to your badge page —
-                  independent third-party confirmation that no PM listing can replicate.
+                <!-- Claim form -->
+                <div x-data="{ claimFile: null, claimNote: '', claimState: 'idle', claimMsg: '' }">
+                  <p style="font-size:.82rem;margin-bottom:.5rem;color:var(--muted)">
+                    Upload a photo from your deck — we'll review and publish your badge within 48h.
+                  </p>
+                  <input type="file" accept="image/jpeg,image/png,image/heic,image/webp"
+                         style="font-size:.82rem;margin-bottom:.4rem;display:block"
+                         @change="claimFile = $event.target.files[0]">
+                  <textarea x-model="claimNote" placeholder="Optional note (e.g. photo taken from master bedroom deck)"
+                            style="width:100%;font-size:.82rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:4px;resize:vertical;height:3.5rem;margin-bottom:.4rem"></textarea>
+                  <button class="btn btn-primary btn-sm"
+                          :disabled="!claimFile || claimState === 'uploading'"
+                          @click="
+                            claimState = 'uploading';
+                            claimMsg = '';
+                            const id = property.property_id;
+                            api('/property/' + encodeURIComponent(id) + '/badge-claim', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ badge_type: 'ocean_view', note: claimNote })
+                            }).then(async r => {
+                              if (!r.ok) throw new Error('failed to get upload URL');
+                              const { upload_url, upload_fields, claim_id, pending_key } = await r.json();
+                              const fd = new FormData();
+                              Object.entries(upload_fields).forEach(([k,v]) => fd.append(k, v));
+                              fd.append('file', claimFile);
+                              const up = await fetch(upload_url, { method: 'POST', body: fd });
+                              if (!up.ok) throw new Error('photo upload failed');
+                              await api('/property/' + encodeURIComponent(id) + '/badge-claim/' + claim_id + '/confirm', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ pending_key })
+                              });
+                              claimState = 'done';
+                              claimMsg = 'Submitted! We\'ll review your photo and publish your badge within 48h.';
+                              viewBadge.status = 'pending_review';
+                            }).catch(e => {
+                              claimState = 'idle';
+                              claimMsg = 'Upload failed — please try again.';
+                            })
+                          ">
+                    <span x-text="claimState === 'uploading' ? 'Uploading…' : 'Submit photo'"></span>
+                  </button>
+                  <p x-show="claimMsg" x-text="claimMsg" style="font-size:.82rem;margin-top:.4rem;color:var(--muted)"></p>
+                </div>
+              </div>
+            </template>
+
+            <!-- pending review -->
+            <template x-if="viewBadge.status === 'pending_review'">
+              <div>
+                <p style="font-size:.9rem;color:var(--muted)">
+                  Your photo is under review. We'll publish your badge within 48h.
                 </p>
               </div>
             </template>
@@ -630,7 +678,7 @@
           </template>
 
           <!-- unclaimed / invited -->
-          <template x-if="soundBadge.status === 'unclaimed' || soundBadge.status === 'invited'">
+          <template x-if="soundBadge.status === 'unclaimed' || soundBadge.status === 'invited' || soundBadge.status === 'pending_review'">
             <div>
               <p style="font-size:.9rem;margin-bottom:.5rem">
                 Our GIS sight-line analysis independently scores your sound view.
@@ -656,13 +704,58 @@
                   </div>
                 </template>
               </div>
-              <a href="mailto:verify@obx.deals?subject=Sound+View+Badge+Claim"
-                 class="btn btn-primary btn-sm">Claim your Verified Sound View badge →</a>
-              <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
-                Email us a photo from your deck toward the sound. Once verified, your badge
-                appears on search.obx.deals results — independent third-party confirmation
-                of your sound view quality.
-              </p>
+              <!-- Claim form (only show if not already pending) -->
+              <template x-if="soundBadge.status !== 'pending_review'">
+                <div x-data="{ claimFile: null, claimNote: '', claimState: 'idle', claimMsg: '' }">
+                  <p style="font-size:.82rem;margin-bottom:.5rem;color:var(--muted)">
+                    Upload a photo from your deck looking toward the sound — we'll review within 48h.
+                  </p>
+                  <input type="file" accept="image/jpeg,image/png,image/heic,image/webp"
+                         style="font-size:.82rem;margin-bottom:.4rem;display:block"
+                         @change="claimFile = $event.target.files[0]">
+                  <textarea x-model="claimNote" placeholder="Optional note (e.g. taken from upper deck, facing NW)"
+                            style="width:100%;font-size:.82rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:4px;resize:vertical;height:3.5rem;margin-bottom:.4rem"></textarea>
+                  <button class="btn btn-primary btn-sm"
+                          :disabled="!claimFile || claimState === 'uploading'"
+                          @click="
+                            claimState = 'uploading';
+                            claimMsg = '';
+                            const id = property.property_id;
+                            api('/property/' + encodeURIComponent(id) + '/badge-claim', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ badge_type: 'sound_view', note: claimNote })
+                            }).then(async r => {
+                              if (!r.ok) throw new Error('failed to get upload URL');
+                              const { upload_url, upload_fields, claim_id, pending_key } = await r.json();
+                              const fd = new FormData();
+                              Object.entries(upload_fields).forEach(([k,v]) => fd.append(k, v));
+                              fd.append('file', claimFile);
+                              const up = await fetch(upload_url, { method: 'POST', body: fd });
+                              if (!up.ok) throw new Error('photo upload failed');
+                              await api('/property/' + encodeURIComponent(id) + '/badge-claim/' + claim_id + '/confirm', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ pending_key })
+                              });
+                              claimState = 'done';
+                              claimMsg = 'Submitted! We\'ll review your photo within 48h.';
+                              soundBadge.status = 'pending_review';
+                            }).catch(e => {
+                              claimState = 'idle';
+                              claimMsg = 'Upload failed — please try again.';
+                            })
+                          ">
+                    <span x-text="claimState === 'uploading' ? 'Uploading…' : 'Submit photo'"></span>
+                  </button>
+                  <p x-show="claimMsg" x-text="claimMsg" style="font-size:.82rem;margin-top:.4rem;color:var(--muted)"></p>
+                </div>
+              </template>
+              <template x-if="soundBadge.status === 'pending_review'">
+                <p style="font-size:.9rem;color:var(--muted)">
+                  Your photo is under review. We'll publish your badge within 48h.
+                </p>
+              </template>
             </div>
           </template>
         </div>
@@ -1190,6 +1283,7 @@ function ownerHub() {
       const res = await this.api('/property/' + encodeURIComponent(id) + '/sound-badge');
       if (res && res.ok) this.soundBadge = await res.json();
     },
+
 
     clearProperty() {
       this.property = null; this.compsData = null; this.paceData = null;
