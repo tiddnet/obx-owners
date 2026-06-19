@@ -522,8 +522,8 @@
         </template>
 
         <!-- ── Verified View Badge (Pro) ──────────────────────────────────── -->
-        <template x-if="tier !== 'free' && viewBadge && viewBadge.eligible">
-          <div class="card mb1" style="border-left:3px solid #15803d;background:#f0fdf4">
+        <div x-show="tier !== 'free' && viewBadge && viewBadge.eligible"
+             class="card mb1" style="border-left:3px solid #15803d;background:#f0fdf4;display:none">
             <p class="section-head" style="color:#15803d">✓ Verified View Badge</p>
 
             <!-- verified -->
@@ -593,7 +593,7 @@
               </div>
             </template>
           </div>
-        </template>
+        </div>
 
       </div>
 
