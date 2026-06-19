@@ -311,6 +311,31 @@
     <!-- Property dashboard -->
     <template x-if="property">
       <div>
+        <!-- Portfolio switcher — shown when user has 2 properties -->
+        <template x-if="propertyIds.length > 1">
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+            <template x-for="pid in propertyIds" :key="pid">
+              <button
+                :class="'btn btn-sm ' + (property && property.property_id === pid ? 'btn-primary' : 'btn-outline')"
+                style="position:relative;padding-right:2rem"
+                @click="loadProperty(pid)">
+                <span x-text="propertyNames[pid] || pid"></span>
+                <span
+                  @click.stop="removeProperty(pid)"
+                  style="position:absolute;right:.4rem;top:50%;transform:translateY(-50%);opacity:.6;font-size:.8rem;cursor:pointer"
+                  title="Remove from portfolio">×</span>
+              </button>
+            </template>
+          </div>
+        </template>
+
+        <!-- Add property button — shown when portfolio has room -->
+        <template x-if="propertyIds.length < 2">
+          <div style="margin-bottom:.75rem">
+            <button class="btn btn-sm btn-outline" @click="property=null">+ Add property</button>
+          </div>
+        </template>
+
         <!-- Property header -->
         <div class="card mb1">
           <div class="prop-card">
@@ -710,6 +735,8 @@ function ownerHub() {
 
     // Property
     property:      null,
+    propertyIds:   [],
+    propertyNames: {},   // pid → display name, populated on loadProperty
     searchQ:       '',
     searchResults: [],
     searchLoading: false,
@@ -849,7 +876,8 @@ function ownerHub() {
       this.features        = data.features || {};
       this.briefingEnabled = !!data.briefing_enabled;
       this.featuredEnabled = !!data.featured;
-      if (data.property_id) await this.loadProperty(data.property_id);
+      this.propertyIds     = data.property_ids || (data.property_id ? [data.property_id] : []);
+      if (this.propertyIds.length) await this.loadProperty(this.propertyIds[0]);
     },
 
     async toggleBriefing(enabled) {
@@ -892,9 +920,18 @@ function ownerHub() {
 
     async selectProperty(r) {
       this.searchResults = [];
+      this.searchError   = '';
+      // If already in portfolio, just switch to it
+      if (this.propertyIds.includes(r.property_id)) {
+        await this.loadProperty(r.property_id);
+        return;
+      }
+      if (this.propertyIds.length >= 2) {
+        this.searchError = 'Portfolio full — remove a property before adding another.';
+        return;
+      }
       await this.loadProperty(r.property_id);
-      // Save to user record; include email + first_name so briefing emailer has them
-      await this.api('/me/property', {
+      const res = await this.api('/me/property', {
         method: 'POST',
         body: JSON.stringify({
           property_id: r.property_id,
@@ -902,6 +939,22 @@ function ownerHub() {
           first_name:  this.user?.given_name || this.user?.name?.split(' ')[0] || '',
         }),
       });
+      if (res && res.ok) {
+        const data = await res.json();
+        this.propertyIds = data.property_ids || this.propertyIds;
+      }
+    },
+
+    async removeProperty(propId) {
+      const res = await this.api('/me/property/' + encodeURIComponent(propId), { method: 'DELETE' });
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      this.propertyIds = data.property_ids || [];
+      // If we removed the active property, switch to the remaining one
+      if (this.property?.property_id === propId) {
+        if (this.propertyIds.length) await this.loadProperty(this.propertyIds[0]);
+        else this.property = null;
+      }
     },
 
     async loadProperty(id) {
@@ -911,6 +964,7 @@ function ownerHub() {
       // Derive view_tier if not set
       prop.view_tier = this._viewTier(prop.view_type);
       this.property = prop;
+      this.propertyNames[id] = prop.property_name || id;
       await this.loadComps();
       if (this.tier !== 'free') {
         await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps()]);
