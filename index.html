@@ -357,6 +357,19 @@
                 <template x-if="property.has_pool"><span style="margin-left:.4rem;font-size:.8rem">🏊 pool</span></template>
                 <template x-if="property.has_hot_tub"><span style="margin-left:.4rem;font-size:.8rem">♨️ hot tub</span></template>
               </p>
+              <template x-if="visibilityData && visibilityData.now !== null">
+                <p style="margin-top:.4rem;font-size:.75rem;color:var(--muted)">
+                  <span style="font-weight:600;color:var(--text)">👁 Considering this property:</span>
+                  &nbsp;
+                  <span style="margin-right:.75rem"><span style="font-weight:600;color:var(--text)" x-text="visibilityData.now"></span> now</span>
+                  <template x-if="visibilityData.d7 !== null">
+                    <span style="margin-right:.75rem"><span x-text="visibilityData.d7"></span> · 7d ago</span>
+                  </template>
+                  <template x-if="visibilityData.d30 !== null">
+                    <span><span x-text="visibilityData.d30"></span> · 30d ago</span>
+                  </template>
+                </p>
+              </template>
             </div>
             <div>
               <button class="btn btn-outline btn-sm" @click="clearProperty()">Change property</button>
@@ -773,6 +786,9 @@ function ownerHub() {
     upgradeInterestFlagged: false,
     checkoutLoading: false,
     paymentSuccess: false,
+    // Visibility
+    visibilityData: null,
+
     // Gaps + report
     gapSummary:   null,
     gapData:      null,
@@ -998,6 +1014,8 @@ function ownerHub() {
       prop.view_tier = this._viewTier(prop.view_type);
       this.property = prop;
       this.propertyNames[id] = prop.property_name || id;
+      this.visibilityData = null;
+      this.loadVisibility();
       await this.loadComps();
       if (this.tier !== 'free') {
         await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps()]);
@@ -1197,6 +1215,13 @@ function ownerHub() {
       const id = this.property.property_id;
       const res = await this.api('/property/' + encodeURIComponent(id) + '/gaps');
       if (res && res.ok) this.gapSummary = await res.json();
+    },
+
+    async loadVisibility() {
+      if (!this.property) return;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/visibility');
+      if (res && res.ok) this.visibilityData = await res.json();
     },
 
     async loadGaps() {
