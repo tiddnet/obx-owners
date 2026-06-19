@@ -847,7 +847,7 @@ function ownerHub() {
     // Pace
     paceData:    null,
     paceLoading: false,
-    viewBadge:   null,
+    viewBadge:   { eligible: false },
     paceError:   '',
 
     // Own rates (paid — open weeks from weekly_rates, booked from inferred_bookings)
@@ -1107,14 +1107,14 @@ function ownerHub() {
     },
 
     async loadViewBadge() {
-      this.viewBadge = null;
+      this.viewBadge = { eligible: false };
       const id = this.property.property_id;
       const res = await this.api('/property/' + encodeURIComponent(id) + '/view-badge');
       if (res && res.ok) this.viewBadge = await res.json();
     },
 
     clearProperty() {
-      this.property = null; this.compsData = null; this.paceData = null; this.viewBadge = null;
+      this.property = null; this.compsData = null; this.paceData = null; this.viewBadge = { eligible: false };
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.gapSummary = null; this.gapData = null; this.reportError = '';
       this.searchQ = ''; this.searchResults = [];
