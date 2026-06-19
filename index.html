@@ -894,9 +894,16 @@ function ownerHub() {
     async loadPortfolioGaps() {
       const results = await Promise.all(
         this.propertyIds.map(async pid => {
-          const r = await this.api('/property/' + encodeURIComponent(pid) + '/gaps');
-          if (!r || !r.ok) return [pid, null];
-          const d = await r.json();
+          const [gapRes, propRes] = await Promise.all([
+            this.api('/property/' + encodeURIComponent(pid) + '/gaps'),
+            this.propertyNames[pid] ? null : this.api('/property/' + encodeURIComponent(pid)),
+          ]);
+          if (propRes && propRes.ok) {
+            const p = await propRes.json();
+            this.propertyNames[pid] = p.property_name || pid;
+          }
+          if (!gapRes || !gapRes.ok) return [pid, null];
+          const d = await gapRes.json();
           return [pid, d.gap_count ?? null];
         })
       );
