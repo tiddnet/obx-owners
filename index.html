@@ -357,19 +357,20 @@
                 <template x-if="property.has_pool"><span style="margin-left:.4rem;font-size:.8rem">🏊 pool</span></template>
                 <template x-if="property.has_hot_tub"><span style="margin-left:.4rem;font-size:.8rem">♨️ hot tub</span></template>
               </p>
-              <template x-if="visibilityData && visibilityData.now !== null">
-                <p style="margin-top:.4rem;font-size:.75rem;color:var(--muted)">
-                  <span style="font-weight:600;color:var(--text)">👁 Considering this property:</span>
-                  &nbsp;
-                  <span style="margin-right:.75rem"><span style="font-weight:600;color:var(--text)" x-text="visibilityData.now"></span> now</span>
-                  <template x-if="visibilityData.d7 !== null">
-                    <span style="margin-right:.75rem"><span x-text="visibilityData.d7"></span> · 7d ago</span>
-                  </template>
-                  <template x-if="visibilityData.d30 !== null">
-                    <span><span x-text="visibilityData.d30"></span> · 30d ago</span>
-                  </template>
-                </p>
-              </template>
+              <p x-show="visibilityData && visibilityData.now !== null"
+                 style="margin-top:.4rem;font-size:.75rem;color:var(--muted)">
+                <span style="font-weight:600;color:var(--text)">👁 Considering this property:</span>
+                &nbsp;
+                <span style="margin-right:.75rem">
+                  <span style="font-weight:600;color:var(--text)" x-text="visibilityData ? visibilityData.now : ''"></span> now
+                </span>
+                <span style="margin-right:.75rem" x-show="visibilityData && visibilityData.d7 !== null">
+                  <span x-text="visibilityData ? visibilityData.d7 : ''"></span> · 7d ago
+                </span>
+                <span x-show="visibilityData && visibilityData.d30 !== null">
+                  <span x-text="visibilityData ? visibilityData.d30 : ''"></span> · 30d ago
+                </span>
+              </p>
             </div>
             <div>
               <button class="btn btn-outline btn-sm" @click="clearProperty()">Change property</button>
