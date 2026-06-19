@@ -433,17 +433,17 @@
               <template x-if="tier !== 'free' && rateSummary && (rateSummary.above + rateSummary.at + rateSummary.below) > 0">
                 <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;margin-bottom:.25rem;align-items:center">
                   <span style="font-size:.78rem;color:var(--muted);font-weight:600">Your rate position:</span>
-                  <template x-if="rateSummary.above > 0">
+                  <template x-if="rateSummary && rateSummary.above > 0">
                     <span style="font-size:.78rem;background:#fdecea;color:#c62828;padding:.2rem .55rem;border-radius:20px;font-weight:600"
-                          x-text="rateSummary.above + ' week'+(rateSummary.above>1?'s':'')+' above p75'"></span>
+                          x-text="(rateSummary?.above||0) + ' week'+((rateSummary?.above||0)>1?'s':'')+' above p75'"></span>
                   </template>
-                  <template x-if="rateSummary.at > 0">
+                  <template x-if="rateSummary && rateSummary.at > 0">
                     <span style="font-size:.78rem;background:#e8f5e9;color:#2e7d32;padding:.2rem .55rem;border-radius:20px;font-weight:600"
-                          x-text="rateSummary.at + ' week'+(rateSummary.at>1?'s':'')+' at market'"></span>
+                          x-text="(rateSummary?.at||0) + ' week'+((rateSummary?.at||0)>1?'s':'')+' at market'"></span>
                   </template>
-                  <template x-if="rateSummary.below > 0">
+                  <template x-if="rateSummary && rateSummary.below > 0">
                     <span style="font-size:.78rem;background:#fff8e1;color:#e65100;padding:.2rem .55rem;border-radius:20px;font-weight:600"
-                          x-text="rateSummary.below + ' week'+(rateSummary.below>1?'s':'')+' below p25'"></span>
+                          x-text="(rateSummary?.below||0) + ' week'+((rateSummary?.below||0)>1?'s':'')+' below p25'"></span>
                   </template>
                 </div>
               </template>
