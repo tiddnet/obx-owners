@@ -558,8 +558,8 @@
               </div>
             </template>
 
-            <!-- unclaimed — show CTA -->
-            <template x-if="viewBadge.status === 'unclaimed' || viewBadge.status === 'invited'">
+            <!-- unclaimed — show CTA (also show after rejection) -->
+            <template x-if="viewBadge.status === 'unclaimed' || viewBadge.status === 'invited' || viewBadge.claim_status === 'rejected'">
               <div>
                 <p style="font-size:.9rem;margin-bottom:.5rem">
                   Our GIS sight-line analysis independently scores your ocean view.
@@ -618,7 +618,7 @@
                               });
                               claimState = 'done';
                               claimMsg = 'Submitted! We\'ll review your photo and publish your badge within 48h.';
-                              viewBadge.status = 'pending_review';
+                              viewBadge.claim_status = 'pending_review';
                             }).catch(e => {
                               claimState = 'idle';
                               claimMsg = 'Upload failed — please try again.';
@@ -631,8 +631,19 @@
               </div>
             </template>
 
+            <!-- rejected — show reason + allow resubmit (handled by unclaimed template above) -->
+            <template x-if="viewBadge.claim_status === 'rejected' && viewBadge.status !== 'verified'">
+              <div style="background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;padding:.5rem .75rem;margin-bottom:.5rem">
+                <p style="font-size:.85rem;color:#dc2626;margin:0;font-weight:600">Photo not approved</p>
+                <p x-show="viewBadge.reviewer_notes" x-text="viewBadge.reviewer_notes"
+                   style="font-size:.82rem;color:#7f1d1d;margin:.2rem 0 0"></p>
+                <p x-show="!viewBadge.reviewer_notes"
+                   style="font-size:.82rem;color:#7f1d1d;margin:.2rem 0 0">Please submit a clearer photo showing the view from your deck.</p>
+              </div>
+            </template>
+
             <!-- pending review -->
-            <template x-if="viewBadge.status === 'pending_review'">
+            <template x-if="viewBadge.claim_status === 'pending_review'">
               <div>
                 <p style="font-size:.9rem;color:var(--muted)">
                   Your photo is under review. We'll publish your badge within 48h.
@@ -677,8 +688,8 @@
             </div>
           </template>
 
-          <!-- unclaimed / invited -->
-          <template x-if="soundBadge.status === 'unclaimed' || soundBadge.status === 'invited' || soundBadge.status === 'pending_review'">
+          <!-- unclaimed / invited / rejected -->
+          <template x-if="soundBadge.status === 'unclaimed' || soundBadge.status === 'invited' || soundBadge.claim_status === 'rejected' || soundBadge.claim_status === 'pending_review'">
             <div>
               <p style="font-size:.9rem;margin-bottom:.5rem">
                 Our GIS sight-line analysis independently scores your sound view.
@@ -704,8 +715,19 @@
                   </div>
                 </template>
               </div>
-              <!-- Claim form (only show if not already pending) -->
-              <template x-if="soundBadge.status !== 'pending_review'">
+              <!-- Rejected notice (shown above form to allow resubmit) -->
+              <template x-if="soundBadge.claim_status === 'rejected'">
+                <div style="background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;padding:.5rem .75rem;margin-bottom:.5rem">
+                  <p style="font-size:.85rem;color:#dc2626;margin:0;font-weight:600">Photo not approved</p>
+                  <p x-show="soundBadge.reviewer_notes" x-text="soundBadge.reviewer_notes"
+                     style="font-size:.82rem;color:#7f1d1d;margin:.2rem 0 0"></p>
+                  <p x-show="!soundBadge.reviewer_notes"
+                     style="font-size:.82rem;color:#7f1d1d;margin:.2rem 0 0">Please submit a clearer photo showing the view toward the sound.</p>
+                </div>
+              </template>
+
+              <!-- Claim form (only show if not already pending review) -->
+              <template x-if="soundBadge.claim_status !== 'pending_review'">
                 <div x-data="{ claimFile: null, claimNote: '', claimState: 'idle', claimMsg: '' }">
                   <p style="font-size:.82rem;margin-bottom:.5rem;color:var(--muted)">
                     Upload a photo from your deck looking toward the sound — we'll review within 48h.
@@ -740,7 +762,7 @@
                               });
                               claimState = 'done';
                               claimMsg = 'Submitted! We\'ll review your photo within 48h.';
-                              soundBadge.status = 'pending_review';
+                              soundBadge.claim_status = 'pending_review';
                             }).catch(e => {
                               claimState = 'idle';
                               claimMsg = 'Upload failed — please try again.';
@@ -751,7 +773,7 @@
                   <p x-show="claimMsg" x-text="claimMsg" style="font-size:.82rem;margin-top:.4rem;color:var(--muted)"></p>
                 </div>
               </template>
-              <template x-if="soundBadge.status === 'pending_review'">
+              <template x-if="soundBadge.claim_status === 'pending_review'">
                 <p style="font-size:.9rem;color:var(--muted)">
                   Your photo is under review. We'll publish your badge within 48h.
                 </p>
