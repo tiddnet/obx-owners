@@ -675,10 +675,10 @@
                :checked="featuredEnabled"
                @change="toggleFeatured($event.target.checked)"
                style="width:16px;height:16px;cursor:pointer">
-        <span style="font-size:.9rem">Feature my property on <a href="https://obx.deals" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">obx.deals</a></span>
+        <span style="font-size:.9rem">Feature my <span x-text="propertyIds.length > 1 ? 'properties' : 'property'"></span> on <a href="https://obx.deals" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">obx.deals</a></span>
       </label>
       <p style="font-size:.78rem;color:var(--muted);margin-top:.5rem">
-        Your property rotates into the Featured section on the obx.deals daily deals page — seen by guests browsing price drops and quick getaways.
+        <span x-text="propertyIds.length > 1 ? 'All your enrolled properties rotate' : 'Your property rotates'"></span> into the Featured section on the obx.deals daily deals page — seen by guests browsing price drops and quick getaways.
       </p>
       <template x-if="featuredLoading">
         <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">Saving…</p>
@@ -946,13 +946,18 @@ function ownerHub() {
       this.featuredEnabled = featured;
       this.featuredLoading = true;
       this.featuredSaved   = false;
-      await this.api('/me/featured', {
-        method: 'POST',
-        body: JSON.stringify({ featured }),
-      });
-      this.featuredLoading = false;
-      this.featuredSaved   = true;
-      setTimeout(() => { this.featuredSaved = false; }, 2500);
+      try {
+        await this.api('/me/featured', {
+          method: 'POST',
+          body: JSON.stringify({ featured }),
+        });
+        this.featuredSaved = true;
+        setTimeout(() => { this.featuredSaved = false; }, 2500);
+      } catch(e) {
+        this.featuredEnabled = !featured; // revert
+      } finally {
+        this.featuredLoading = false;
+      }
     },
 
     // ── Property search ───────────────────────────────────────────────────────
