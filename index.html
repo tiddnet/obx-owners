@@ -319,7 +319,14 @@
                 :class="'btn btn-sm ' + (property && property.property_id === pid ? 'btn-primary' : 'btn-outline')"
                 style="position:relative;padding-right:2rem"
                 @click="loadProperty(pid)">
-                <span x-text="propertyNames[pid] || pid"></span>
+                <span style="display:flex;flex-direction:column;align-items:flex-start;gap:.15rem">
+                  <span x-text="propertyNames[pid] || pid"></span>
+                  <span
+                    x-show="portfolioGaps[pid] !== undefined"
+                    :style="'font-size:.65rem;font-weight:600;letter-spacing:.02em;' + (portfolioGaps[pid] === 0 ? 'color:#22c55e' : 'color:#f59e0b')"
+                    x-text="portfolioGaps[pid] === 0 ? '✓ No unbookable gaps' : (portfolioGaps[pid] + ' gap' + (portfolioGaps[pid] === 1 ? '' : 's') + ' detected')">
+                  </span>
+                </span>
                 <span
                   @click.stop="removeProperty(pid)"
                   style="position:absolute;right:.4rem;top:50%;transform:translateY(-50%);opacity:.6;font-size:.8rem;cursor:pointer"
@@ -737,6 +744,7 @@ function ownerHub() {
     property:      null,
     propertyIds:   [],
     propertyNames: {},   // pid → display name, populated on loadProperty
+    portfolioGaps: {},   // pid → gap_count, populated on loadMe
     searchQ:       '',
     searchResults: [],
     searchLoading: false,
@@ -877,7 +885,24 @@ function ownerHub() {
       this.briefingEnabled = !!data.briefing_enabled;
       this.featuredEnabled = !!data.featured;
       this.propertyIds     = data.property_ids || (data.property_id ? [data.property_id] : []);
-      if (this.propertyIds.length) await this.loadProperty(this.propertyIds[0]);
+      if (this.propertyIds.length) {
+        await this.loadProperty(this.propertyIds[0]);
+        this.loadPortfolioGaps();
+      }
+    },
+
+    async loadPortfolioGaps() {
+      const results = await Promise.all(
+        this.propertyIds.map(async pid => {
+          const r = await this.api('/property/' + encodeURIComponent(pid) + '/gaps');
+          if (!r || !r.ok) return [pid, null];
+          const d = await r.json();
+          return [pid, d.gap_count ?? null];
+        })
+      );
+      const map = {};
+      results.forEach(([pid, count]) => { map[pid] = count; });
+      this.portfolioGaps = map;
     },
 
     async toggleBriefing(enabled) {
@@ -942,6 +967,7 @@ function ownerHub() {
       if (res && res.ok) {
         const data = await res.json();
         this.propertyIds = data.property_ids || this.propertyIds;
+        this.loadPortfolioGaps();
       }
     },
 
