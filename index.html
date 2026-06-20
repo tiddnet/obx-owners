@@ -793,6 +793,41 @@
         </div>
       </template>
 
+      <!-- ── Market pulse teaser (free) ──────────────────────────────────────── -->
+      <template x-if="marketPulse && marketPulse.comp_booking">
+        <div class="card mb1" style="border-left:3px solid #1565c0;background:#f0f4ff">
+          <p class="section-head" style="color:#1565c0">Market pulse</p>
+          <p style="font-size:.92rem;margin-bottom:.5rem">
+            A <strong x-text="marketPulse.comp_booking.bedrooms + 'BR ' + (marketPulse.comp_booking.has_pool ? 'pool · ' : '') + (marketPulse.comp_booking.view_type || '')"></strong>
+            in <strong x-text="marketPulse.comp_booking.community"></strong>
+            booked this month at
+            <strong x-text="'$' + (marketPulse.comp_booking.rate || 0).toLocaleString() + '/wk'"></strong>.
+          </p>
+          <template x-if="tier === 'free'">
+            <p style="font-size:.85rem;color:#555;margin-bottom:.75rem">
+              Pro members see the full picture: how many comps cut their rates this season, what % actually booked, and how far out guests are booking in your market.
+            </p>
+          </template>
+          <template x-if="tier !== 'free' && marketPulse.pro">
+            <div style="font-size:.88rem;color:#333;margin-bottom:.75rem">
+              <div x-show="marketPulse.pro.drop_total > 0">
+                <strong x-text="marketPulse.pro.drop_total"></strong> comps cut rates in your tier this season —
+                <strong x-text="marketPulse.pro.drop_booked + ' booked (' + Math.round(marketPulse.pro.drop_booked / marketPulse.pro.drop_total * 100) + '%)'"></strong>
+                <template x-if="marketPulse.pro.drop_avg_days">
+                  <span x-text="', avg ' + marketPulse.pro.drop_avg_days + ' days to book'"></span>
+                </template>.
+              </div>
+              <div x-show="marketPulse.pro.avg_lead_days">
+                Guests in your market are booking <strong x-text="marketPulse.pro.avg_lead_days + ' days'"></strong> in advance on average.
+              </div>
+            </div>
+          </template>
+          <template x-if="tier === 'free'">
+            <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock Pro — see the full market →</button>
+          </template>
+        </div>
+      </template>
+
       <!-- ── Orphan gaps + PDF report (pro) ────────────────────────────────── -->
       <template x-if="tier !== 'free' && property">
         <div class="card mb1">
@@ -1051,6 +1086,9 @@ function ownerHub() {
     // Visibility
     visibilityData: null,
 
+    // Market pulse
+    marketPulse:  null,
+
     // Gaps + report
     gapSummary:   null,
     gapData:      null,
@@ -1166,6 +1204,7 @@ function ownerHub() {
       if (this.propertyIds.length) {
         await this.loadProperty(this.propertyIds[0]);
         this.loadPortfolioGaps();
+        this.loadMarketPulse();
       }
     },
 
@@ -1311,6 +1350,7 @@ function ownerHub() {
       this.property = null; this.compsData = null; this.paceData = null;
       this.viewBadge = { eligible: false }; this.soundBadge = { eligible: false };
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
+      this.marketPulse = null;
       this.gapSummary = null; this.gapData = null; this.reportError = '';
       this.searchQ = ''; this.searchResults = [];
       this.ingestionSubmitted = false; this.ingestionError = '';
@@ -1490,6 +1530,12 @@ function ownerHub() {
       this.paceLoading = false;
       if (!res || !res.ok) { this.paceError = 'Could not load pace data.'; return; }
       this.paceData = await res.json();
+    },
+
+    // ── Market pulse ──────────────────────────────────────────────────────────
+    async loadMarketPulse() {
+      const res = await this.api('/me/market-pulse');
+      if (res && res.ok) this.marketPulse = await res.json();
     },
 
     // ── Gaps + report ─────────────────────────────────────────────────────────
