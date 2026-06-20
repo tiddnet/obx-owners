@@ -118,9 +118,12 @@
                  border-radius: 6px; padding: .6rem .75rem; font-size: .82rem; }
     .week-cell .date  { color: var(--muted); font-size: .72rem; }
     .week-cell .price { font-weight: 700; font-size: .95rem; }
+    .week-cell.t2     { background: #fff8e6; border-left: 3px solid #f0a500; }
+    .week-cell.t3     { background: #fff0e6; border-left: 3px solid #e06000; }
     .week-cell.above  { border-left: 3px solid #ef5350; }
     .week-cell.at     { border-left: 3px solid #66bb6a; }
     .week-cell.below  { border-left: 3px solid #ffa726; }
+    .comp-tier-badge  { font-size: .65rem; color: #999; margin-top: .15rem; }
 
     /* ── Upgrade gate ── */
     .gate { text-align: center; padding: 2rem; border: 2px dashed var(--rule);
@@ -456,7 +459,9 @@
                          :class="{
                            'above': ratePosition(w) === 'above_p75',
                            'at':    ratePosition(w) === 'p50_to_p75' || ratePosition(w) === 'p25_to_p50',
-                           'below': ratePosition(w) === 'below_p25'
+                           'below': ratePosition(w) === 'below_p25',
+                           't2':    w.tier === 2,
+                           't3':    w.tier === 3,
                          }">
                       <div class="date" x-text="fmtWeek(w.week_of)"></div>
                       <template x-if="activeBasesData(w)">
@@ -477,11 +482,24 @@
                           </template>
                           <div style="font-size:.7rem;color:var(--muted)"
                                x-text="'n='+activeBasesData(w).n"></div>
+                          <template x-if="w.tier === 2">
+                            <div class="comp-tier-badge">† adj. community</div>
+                          </template>
+                          <template x-if="w.tier === 3">
+                            <div class="comp-tier-badge">‡ adj. bedrooms</div>
+                          </template>
                         </div>
                       </template>
                     </div>
                   </template>
                 </div>
+                <!-- Tier fallback legend -->
+                <template x-if="compsData && (compsData.weeks||[]).some(w => w.tier > 1)">
+                  <p style="font-size:.75rem;color:#888;margin-top:.5rem">
+                    † Adjacent community comps (same-community bucket sparse) &nbsp;·&nbsp;
+                    ‡ ±1 bedroom comps, rate-adjusted (ADR 0126/0127)
+                  </p>
+                </template>
               </template>
             </div>
           </div>
