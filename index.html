@@ -1146,8 +1146,9 @@ function ownerHub() {
         this.authClient = await auth0.createAuth0Client({
           domain:        AUTH0_DOMAIN,
           clientId:      AUTH0_CLIENT,
-          authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email' },
-          cacheLocation: 'memory',
+          authorizationParams: { audience: AUTH0_AUDIENCE, scope: 'openid profile email offline_access' },
+          cacheLocation: 'localstorage',
+          useRefreshTokens: true,
         });
 
         // Handle redirect callback (code exchange after Auth0 login)
