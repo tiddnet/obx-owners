@@ -1154,9 +1154,11 @@ function ownerHub() {
         });
 
         // Handle redirect callback (code exchange after Auth0 login)
+        let justLoggedIn = false;
         if (location.search.includes('code=') || location.search.includes('error=')) {
           try {
             await this.authClient.handleRedirectCallback();
+            justLoggedIn = true;
           } catch (e) {
             console.warn('Redirect callback error:', e);
           }
@@ -1170,7 +1172,9 @@ function ownerHub() {
           // loadMe() runs below after isAuthenticated check; tier will reflect pro
         }
 
-        const isAuthenticated = await this.authClient.isAuthenticated();
+        // After a fresh login callback, proceed directly — isAuthenticated() can
+        // return false on the same tick even though the token was just cached.
+        const isAuthenticated = justLoggedIn || await this.authClient.isAuthenticated();
         if (isAuthenticated) {
           this.token = await this.authClient.getTokenSilently();
           const profile = await this.authClient.getUser();
