@@ -988,7 +988,7 @@
         <label style="display:flex;align-items:center;gap:.65rem;cursor:pointer;margin-bottom:.45rem">
           <input type="checkbox"
                  :checked="featuredPropertyIds.includes(pid)"
-                 @change="toggleFeaturedProperty(pid, $event.target.checked)"
+                 @click.prevent="toggleFeaturedProperty(pid, !featuredPropertyIds.includes(pid))"
                  style="width:16px;height:16px;cursor:pointer">
           <span style="font-size:.88rem" x-text="propertyNames[pid] || pid"></span>
         </label>
