@@ -1,0 +1,7 @@
+# owners.obx.deals — Owner Hub (auth-gated B2B product)
+# Kept out of search intentionally. obx.deals is the discoverable/marketing
+# surface; owners.obx.deals is reached via referral (FB group, Owner Hub
+# CTA, obx.deals links) rather than organic search.
+
+User-agent: *
+Disallow: /
