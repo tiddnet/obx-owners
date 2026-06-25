@@ -124,6 +124,10 @@
     .week-cell.above  { border-left: 3px solid #ef5350; }
     .week-cell.at     { border-left: 3px solid #66bb6a; }
     .week-cell.below  { border-left: 3px solid #ffa726; }
+    .week-cell.risk-cut    { border-left: 3px solid #c62828; background: #fdf2f2; }
+    .week-cell.risk-watch  { border-left: 3px solid #e67e22; }
+    .week-cell.risk-hold   { border-left: 3px solid #27ae60; }
+    .week-cell.risk-monitor { border-left: 3px solid #d4ac0d; }
     .comp-tier-badge  { font-size: .65rem; color: #999; margin-top: .15rem; }
 
     /* ── Upgrade gate ── */
@@ -382,6 +386,66 @@
           </div>
         </div>
 
+        <!-- Revenue Opportunity (ADR 0044 Module 1) -->
+        <div class="card mb1">
+          <p class="section-head">Revenue opportunity — this season</p>
+          <div x-show="opportunityLoading"><div class="spinner"></div></div>
+
+          <template x-if="!opportunityLoading && tier !== 'free' && opportunitySummary">
+            <div>
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:.75rem">
+                <div>
+                  <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Booked, last 12mo</div>
+                  <div style="font-size:1.3rem;font-weight:700" x-text="'$'+Math.round(opportunitySummary.booked_to_date).toLocaleString()"></div>
+                </div>
+                <div>
+                  <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Open-week $ left on the table</div>
+                  <div style="font-size:1.3rem;font-weight:700;color:#c62828" x-text="'$'+Math.round(opportunitySummary.season_gap_total).toLocaleString()"></div>
+                </div>
+              </div>
+              <template x-if="opportunityData && opportunityData.length">
+                <div style="overflow-x:auto">
+                  <table style="width:100%;font-size:.8rem;border-collapse:collapse">
+                    <thead>
+                      <tr style="text-align:left;border-bottom:1px solid var(--rule)">
+                        <th style="padding:.3rem .5rem">Week</th>
+                        <th style="padding:.3rem .5rem">Current</th>
+                        <th style="padding:.3rem .5rem">Suggested</th>
+                        <th style="padding:.3rem .5rem">EV gain</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="w in opportunityData.filter(w => w.ev_delta)" :key="w.week_of">
+                        <tr style="border-bottom:1px solid var(--rule)">
+                          <td style="padding:.3rem .5rem" x-text="fmtWeek(w.week_of)"></td>
+                          <td style="padding:.3rem .5rem" x-text="'$'+Math.round(w.owner_rate).toLocaleString()"></td>
+                          <td style="padding:.3rem .5rem" x-text="'$'+Math.round(w.suggested_price).toLocaleString()"></td>
+                          <td style="padding:.3rem .5rem;color:#27ae60;font-weight:600" x-text="'+$'+Math.round(w.ev_delta).toLocaleString()"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+              <template x-if="!opportunityData || !opportunityData.filter(w => w.ev_delta).length">
+                <p style="font-size:.84rem;color:var(--muted)">No EV-positive cuts found right now — pricing looks close to optimal for the weeks we have signal on.</p>
+              </template>
+            </div>
+          </template>
+
+          <template x-if="tier === 'free' && opportunitySummary && opportunitySummary.season_gap_total > subscriptionPriceUsd">
+            <div class="gate mb1">
+              <h3 x-text="'$'+Math.round(opportunitySummary.season_gap_total).toLocaleString()+' may be left on the table this season'"></h3>
+              <p>See exactly which weeks, what to charge instead, and the dollar gain — based on real booking-conversion data for your comp set.</p>
+              <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock with Pro →</button>
+            </div>
+          </template>
+
+          <template x-if="tier === 'free' && opportunitySummary && opportunitySummary.season_gap_total <= subscriptionPriceUsd">
+            <p style="font-size:.84rem;color:var(--muted)">Your pricing looks close to optimal right now — no major dollars left on the table that we can see.</p>
+          </template>
+        </div>
+
         <!-- Rate basis pills (if multiple bases in comp data) -->
         <template x-if="availableBases.length > 1">
           <div class="mb1">
@@ -504,6 +568,48 @@
               </template>
             </div>
           </div>
+
+        <!-- Calendar Risk (ADR 0044 Module 2) — combines price position + booking
+             velocity into one signal + recommendation per open week. -->
+        <div class="card mb1">
+          <p class="section-head">Calendar risk — weeks needing attention</p>
+          <div x-show="gapRiskLoading"><div class="spinner"></div></div>
+
+          <template x-if="!gapRiskLoading && tier !== 'free' && gapRiskData && gapRiskData.length">
+            <div class="comp-weeks">
+              <template x-for="w in gapRiskData" :key="w.week_of">
+                <div class="week-cell"
+                     :class="{
+                       'risk-cut':     w.signal && w.signal.includes('Cut now'),
+                       'risk-watch':   w.signal && w.signal.includes('Consider cut'),
+                       'risk-hold':    w.signal && w.signal.includes('Hold'),
+                       'risk-monitor': w.signal && w.signal.includes('Monitor'),
+                     }">
+                  <div class="date" x-text="fmtWeek(w.week_of)"></div>
+                  <div class="price" x-text="'$'+Math.round(w.rate).toLocaleString()"></div>
+                  <div style="font-size:.78rem;font-weight:600;margin-top:.2rem" x-text="w.signal"></div>
+                  <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem" x-text="w.recommended"></div>
+                  <template x-if="w.booked_pct !== null && w.booked_pct !== undefined">
+                    <div style="font-size:.7rem;color:var(--muted)"
+                         x-text="Math.round(w.booked_pct*100)+'% of comps booked'"></div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <template x-if="!gapRiskLoading && tier !== 'free' && (!gapRiskData || !gapRiskData.length)">
+            <p style="font-size:.84rem;color:var(--muted)">No open weeks need attention right now.</p>
+          </template>
+
+          <template x-if="tier === 'free' && gapRiskSummary">
+            <div class="gate mb1">
+              <h3 x-text="gapRiskSummary.attention_count + ' week' + (gapRiskSummary.attention_count !== 1 ? 's' : '') + ' may need attention'"></h3>
+              <p>See exactly which weeks, why, and what to do about it — price position + booking velocity combined into one signal.</p>
+              <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock with Pro →</button>
+            </div>
+          </template>
+        </div>
 
         <!-- Booking pace (paid) -->
         <template x-if="tier !== 'free'">
@@ -1114,7 +1220,18 @@ function ownerHub() {
     gapData:      null,
     gapLoading:   false,
     reportLoading: false,
+
+    // Calendar Risk (ADR 0044 Module 2)
+    gapRiskSummary: null,
+    gapRiskData:    null,
+    gapRiskLoading: false,
     reportError:   '',
+
+    // Revenue Opportunity (ADR 0044 Module 1)
+    opportunitySummary: null,
+    opportunityData:    null,
+    opportunityLoading: false,
+    subscriptionPriceUsd: 199,  // keep in sync with the $199 season pass shown in the upgrade modal
 
     // Briefing settings
     briefingEnabled: false,
@@ -1364,6 +1481,8 @@ function ownerHub() {
       this.visibilityData = null;
       this.loadVisibility();
       await this.loadComps();
+      this.loadGapRisk();
+      this.loadOpportunity();
       if (this.tier !== 'free') {
         await Promise.all([this.loadPace(), this.loadRates(), this.loadGaps(), this.loadViewBadge(), this.loadSoundBadge()]);
       } else {
@@ -1393,6 +1512,8 @@ function ownerHub() {
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.marketPulse = null;
       this.gapSummary = null; this.gapData = null; this.reportError = '';
+      this.gapRiskSummary = null; this.gapRiskData = null;
+      this.opportunitySummary = null; this.opportunityData = null;
       this.searchQ = ''; this.searchResults = [];
       this.ingestionSubmitted = false; this.ingestionError = '';
       this.ingestionForm.urls_raw = ''; this.ingestionForm.description = '';
@@ -1601,6 +1722,34 @@ function ownerHub() {
       const res = await this.api('/property/' + encodeURIComponent(id) + '/gaps');
       this.gapLoading = false;
       if (res && res.ok) this.gapData = await res.json();
+    },
+
+    // ── Calendar Risk (ADR 0044 Module 2) ───────────────────────────────────
+    async loadGapRisk() {
+      if (!this.property) return;
+      this.gapRiskLoading = true;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/gap-risk');
+      this.gapRiskLoading = false;
+      if (res && res.ok) {
+        const data = await res.json();
+        this.gapRiskSummary = data;
+        this.gapRiskData = data.weeks || null;
+      }
+    },
+
+    // ── Revenue Opportunity (ADR 0044 Module 1) ─────────────────────────────
+    async loadOpportunity() {
+      if (!this.property) return;
+      this.opportunityLoading = true;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/opportunity');
+      this.opportunityLoading = false;
+      if (res && res.ok) {
+        const data = await res.json();
+        this.opportunitySummary = data;
+        this.opportunityData = data.weeks || null;
+      }
     },
 
     async downloadReport() {
