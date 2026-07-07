@@ -648,8 +648,8 @@
           <p style="font-size:.84rem;color:var(--muted)">No standout booking-pace signal for your open weeks right now.</p>
         </template>
 
-        <!-- ── Verified View Badge (Pro) ──────────────────────────────────── -->
-        <div x-show="tier !== 'free' && viewBadge && viewBadge.eligible"
+        <!-- ── Verified View Badge (free — ADR 0207) ─────────────────────── -->
+        <div x-show="viewBadge && viewBadge.eligible"
              class="card mb1" style="border-left:3px solid #15803d;background:#f0fdf4;display:none">
             <p class="section-head" style="color:#15803d">✓ Verified View Badge</p>
 
@@ -780,8 +780,8 @@
             </template>
           </div>
 
-        <!-- ── Verified Sound View Badge (Pro) ───────────────────────────────── -->
-        <div x-show="tier !== 'free' && soundBadge && soundBadge.eligible"
+        <!-- ── Verified Sound View Badge (free — ADR 0207) ────────────────── -->
+        <div x-show="soundBadge && soundBadge.eligible"
              class="card mb1" style="border-left:3px solid #0369a1;background:#f0f9ff;display:none">
           <p class="section-head" style="color:#0369a1">✓ Verified Sound View Badge</p>
 
@@ -910,8 +910,8 @@
           </template>
         </div>
 
-        <!-- ── Verified Wind Sports Home Badge (Pro) ─────────────────────────── -->
-        <div x-show="tier !== 'free' && windBadge && windBadge.eligible"
+        <!-- ── Verified Wind Sports Home Badge (free — ADR 0207) ──────────── -->
+        <div x-show="windBadge && windBadge.eligible"
              class="card mb1" style="border-left:3px solid #0d9488;background:#f0fdfa;display:none">
           <p class="section-head" style="color:#0d9488">🪁 Verified Wind Sports Home</p>
 
@@ -1612,8 +1612,10 @@ function ownerHub() {
       this.loadGapRisk();
       this.loadOpportunity();
       this.loadPace();
+      // Badges are free-tier (ADR 0207) — load regardless of tier.
+      this.loadViewBadge(); this.loadSoundBadge(); this.loadWindBadge();
       if (this.tier !== 'free') {
-        await Promise.all([this.loadRates(), this.loadGaps(), this.loadViewBadge(), this.loadSoundBadge(), this.loadWindBadge()]);
+        await Promise.all([this.loadRates(), this.loadGaps()]);
       } else {
         this.loadGapSummary();
       }
