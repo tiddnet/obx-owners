@@ -910,6 +910,129 @@
           </template>
         </div>
 
+        <!-- ── Verified Wind Sports Home Badge (Pro) ─────────────────────────── -->
+        <div x-show="tier !== 'free' && windBadge && windBadge.eligible"
+             class="card mb1" style="border-left:3px solid #0d9488;background:#f0fdfa;display:none">
+          <p class="section-head" style="color:#0d9488">🪁 Verified Wind Sports Home</p>
+
+          <!-- verified -->
+          <template x-if="windBadge.status === 'verified'">
+            <div>
+              <p style="font-size:.9rem;margin-bottom:.6rem">
+                Your property is independently verified as premier wind-sports access by GIS sound-front analysis and confirmed photo.
+                <strong x-text="windBadge.sound_body ? windBadge.sound_body.replace(/_/g,' ') : ''"></strong>
+                · <span x-text="Math.round(windBadge.ft_sound)"></span> ft to sound
+              </p>
+              <a :href="windBadge.badge_url" target="_blank" rel="noopener"
+                 class="btn btn-primary btn-sm">View your badge page →</a>
+              <p style="font-size:.77rem;color:var(--muted);margin-top:.5rem">
+                Verified <span x-text="windBadge.verified_at ? windBadge.verified_at.slice(0,10) : ''"></span>.
+              </p>
+            </div>
+          </template>
+
+          <!-- submitted -->
+          <template x-if="windBadge.status === 'submitted'">
+            <div>
+              <p style="font-size:.9rem;margin-bottom:.4rem">
+                Photo received — review in progress. You'll hear back within 48 hours.
+              </p>
+              <p style="font-size:.77rem;color:var(--muted)">
+                <span x-text="windBadge.sound_body ? windBadge.sound_body.replace(/_/g,' ') : ''"></span>
+                · <span x-text="Math.round(windBadge.ft_sound)"></span> ft to sound
+              </p>
+            </div>
+          </template>
+
+          <!-- unclaimed / invited / rejected -->
+          <template x-if="windBadge.status === 'unclaimed' || windBadge.status === 'invited' || windBadge.claim_status === 'rejected' || windBadge.claim_status === 'pending_review'">
+            <div>
+              <p style="font-size:.9rem;margin-bottom:.5rem">
+                Our GIS sound-front analysis flags your property as premier wind-sports access — kiteboarding and windsurfing guests search for exactly this. Submit a photo showing your sound access to claim your badge.
+              </p>
+              <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:.65rem">
+                <div>
+                  <div style="font-size:1.1rem;font-weight:600;color:#0d9488" x-text="windBadge.wind_sports_tier || '—'"></div>
+                  <div style="font-size:.72rem;color:var(--muted)">wind-sports tier</div>
+                </div>
+                <div>
+                  <div style="font-size:1.1rem;font-weight:600" x-text="Math.round(windBadge.ft_sound) + ' ft'"></div>
+                  <div style="font-size:.72rem;color:var(--muted)">to sound</div>
+                </div>
+                <template x-if="windBadge.sound_body">
+                  <div>
+                    <div style="font-size:1.1rem;font-weight:600" x-text="windBadge.sound_body ? windBadge.sound_body.replace(/_/g,' ') : ''"></div>
+                    <div style="font-size:.72rem;color:var(--muted)">water body</div>
+                  </div>
+                </template>
+              </div>
+              <!-- Rejected notice (shown above form to allow resubmit) -->
+              <template x-if="windBadge.claim_status === 'rejected'">
+                <div style="background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;padding:.5rem .75rem;margin-bottom:.5rem">
+                  <p style="font-size:.85rem;color:#dc2626;margin:0;font-weight:600">Photo not approved</p>
+                  <p x-show="windBadge.reviewer_notes" x-text="windBadge.reviewer_notes"
+                     style="font-size:.82rem;color:#7f1d1d;margin:.2rem 0 0"></p>
+                  <p x-show="!windBadge.reviewer_notes"
+                     style="font-size:.82rem;color:#7f1d1d;margin:.2rem 0 0">Please submit a clearer photo showing sound access from your property.</p>
+                </div>
+              </template>
+
+              <!-- Claim form (only show if not already pending review) -->
+              <template x-if="windBadge.claim_status !== 'pending_review'">
+                <div x-data="{ claimFile: null, claimNote: '', claimState: 'idle', claimMsg: '' }">
+                  <p style="font-size:.82rem;margin-bottom:.5rem;color:var(--muted)">
+                    Upload a photo showing your sound access or launch spot — we'll review within 48h.
+                  </p>
+                  <input type="file" accept="image/jpeg,image/png,image/heic,image/webp"
+                         style="font-size:.82rem;margin-bottom:.4rem;display:block"
+                         @change="claimFile = $event.target.files[0]">
+                  <textarea x-model="claimNote" placeholder="Optional note (e.g. taken from the dock, facing west)"
+                            style="width:100%;font-size:.82rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:4px;resize:vertical;height:3.5rem;margin-bottom:.4rem"></textarea>
+                  <button class="btn btn-primary btn-sm"
+                          :disabled="!claimFile || claimState === 'uploading'"
+                          @click="
+                            claimState = 'uploading';
+                            claimMsg = '';
+                            const id = property.property_id;
+                            api('/property/' + encodeURIComponent(id) + '/badge-claim', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ badge_type: 'wind_sports', note: claimNote })
+                            }).then(async r => {
+                              if (!r.ok) throw new Error('failed to get upload URL');
+                              const { upload_url, upload_fields, claim_id, pending_key } = await r.json();
+                              const fd = new FormData();
+                              Object.entries(upload_fields).forEach(([k,v]) => fd.append(k, v));
+                              fd.append('file', claimFile);
+                              const up = await fetch(upload_url, { method: 'POST', body: fd });
+                              if (!up.ok) throw new Error('photo upload failed');
+                              await api('/property/' + encodeURIComponent(id) + '/badge-claim/' + claim_id + '/confirm', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ pending_key })
+                              });
+                              claimState = 'done';
+                              claimMsg = 'Submitted! We\'ll review your photo within 48h.';
+                              windBadge.claim_status = 'pending_review';
+                            }).catch(e => {
+                              claimState = 'idle';
+                              claimMsg = 'Upload failed — please try again.';
+                            })
+                          ">
+                    <span x-text="claimState === 'uploading' ? 'Uploading…' : 'Submit photo'"></span>
+                  </button>
+                  <p x-show="claimMsg" x-text="claimMsg" style="font-size:.82rem;margin-top:.4rem;color:var(--muted)"></p>
+                </div>
+              </template>
+              <template x-if="windBadge.claim_status === 'pending_review'">
+                <p style="font-size:.9rem;color:var(--muted)">
+                  Your photo is under review. We'll publish your badge within 48h.
+                </p>
+              </template>
+            </div>
+          </template>
+        </div>
+
       <!-- ── Orphan gap teaser (free) ──────────────────────────────────────── -->
       <template x-if="tier === 'free' && gapSummary && gapSummary.gap_count > 0">
         <div class="card mb1" style="border-left:3px solid #e65100;background:#fffbf7">
@@ -1199,6 +1322,7 @@ function ownerHub() {
     paceLoading: false,
     viewBadge:   { eligible: false },
     soundBadge:  { eligible: false },
+    windBadge:   { eligible: false },
     paceError:   '',
 
     // Own rates (paid — open weeks from weekly_rates, booked from inferred_bookings)
@@ -1489,7 +1613,7 @@ function ownerHub() {
       this.loadOpportunity();
       this.loadPace();
       if (this.tier !== 'free') {
-        await Promise.all([this.loadRates(), this.loadGaps(), this.loadViewBadge(), this.loadSoundBadge()]);
+        await Promise.all([this.loadRates(), this.loadGaps(), this.loadViewBadge(), this.loadSoundBadge(), this.loadWindBadge()]);
       } else {
         this.loadGapSummary();
       }
@@ -1510,10 +1634,17 @@ function ownerHub() {
       if (res && res.ok) this.soundBadge = await res.json();
     },
 
+    async loadWindBadge() {
+      this.windBadge = { eligible: false };
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/wind-sports-badge');
+      if (res && res.ok) this.windBadge = await res.json();
+    },
+
 
     clearProperty() {
       this.property = null; this.compsData = null; this.paceData = null; this.paceHighlight = null;
-      this.viewBadge = { eligible: false }; this.soundBadge = { eligible: false };
+      this.viewBadge = { eligible: false }; this.soundBadge = { eligible: false }; this.windBadge = { eligible: false };
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.marketPulse = null;
       this.gapSummary = null; this.gapData = null; this.reportError = '';
