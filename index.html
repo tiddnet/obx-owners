@@ -42,8 +42,9 @@
     header { background: var(--card); border-bottom: 1px solid var(--rule);
              padding: 0 1.5rem; display: flex; align-items: center;
              justify-content: space-between; height: 52px; }
-    .logo { font-weight: 700; font-size: 1rem; color: var(--ink); }
-    .logo span { color: var(--accent); }
+    .logo-obx, .logo-suffix { font-weight: 700; font-size: 1rem; text-decoration: none; }
+    .logo-obx { color: var(--ink); }
+    .logo-suffix { color: var(--accent); margin-left: 0.3em; }
     .main { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
 
     /* ── Buttons ── */
@@ -162,7 +163,7 @@
 
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
 <header>
-  <a class="logo" href="/">OBX <span>Owner Hub</span></a>
+  <div style="display:flex;align-items:baseline"><a href="https://obx.deals" class="logo-obx">OBX</a><a href="/" class="logo-suffix">Owner Hub</a></div>
   <div style="display:flex;align-items:center;gap:1rem">
     <template x-if="loading">
       <div class="spinner" style="width:20px;height:20px;margin:0"></div>
