@@ -387,6 +387,25 @@
           </div>
         </div>
 
+        <!-- Public listing description (ADR 0224 Stage 3) -->
+        <div class="card mb1">
+          <p class="section-head">Public listing description</p>
+          <p style="font-size:.8rem;color:var(--muted);margin-bottom:.5rem">
+            Shown on your property's public page at obx.deals — a short note guests see alongside your current listing.
+          </p>
+          <textarea x-model="descDraft" maxlength="600" rows="3"
+                    placeholder="A few sentences about what makes this property special…"
+                    style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:6px;font:inherit;resize:vertical"></textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.4rem">
+            <span style="font-size:.72rem;color:var(--muted)" x-text="(descDraft || '').length + ' / 600'"></span>
+            <button class="btn btn-primary btn-sm" @click="saveDescription()" :disabled="descSaving">
+              <span x-show="!descSaving">Save</span>
+              <span x-show="descSaving">Saving…</span>
+            </button>
+          </div>
+          <p x-show="descMsg" x-text="descMsg" style="font-size:.75rem;margin-top:.35rem;color:var(--muted)"></p>
+        </div>
+
         <!-- Revenue Opportunity (ADR 0044 Module 1) -->
         <div class="card mb1">
           <p class="section-head">Revenue opportunity — this season</p>
@@ -1326,6 +1345,11 @@ function ownerHub() {
     windBadge:   { eligible: false },
     paceError:   '',
 
+    // Public listing description (ADR 0224 Stage 3)
+    descDraft:  '',
+    descSaving: false,
+    descMsg:    '',
+
     // Own rates (paid — open weeks from weekly_rates, booked from inferred_bookings)
     ownOpen:      {},   // { week_of: rate } — orange: currently listed/available
     ownBooked:    {},   // { week_of: rate } — green: inferred booking clearance
@@ -1607,6 +1631,9 @@ function ownerHub() {
       prop.view_tier = this._viewTier(prop.view_type);
       this.property = prop;
       this.propertyNames[id] = prop.property_name || id;
+      this.descDraft = prop.owner_description || '';
+      this.descSaving = false;
+      this.descMsg = '';
       this.visibilityData = null;
       this.loadVisibility();
       await this.loadComps();
@@ -1621,6 +1648,30 @@ function ownerHub() {
         this.loadGapSummary();
       }
       this.$nextTick(() => this.drawChart());
+    },
+
+    async saveDescription() {
+      const id = this.property.property_id;
+      const text = (this.descDraft || '').trim();
+      if (!text) { this.descMsg = 'Description can\'t be empty.'; return; }
+      if (text.length > 600) { this.descMsg = 'Keep it under 600 characters.'; return; }
+      this.descSaving = true;
+      this.descMsg = '';
+      try {
+        const res = await this.api('/property/' + encodeURIComponent(id) + '/description', {
+          method: 'POST',
+          body: JSON.stringify({ description: text })
+        });
+        if (res && res.ok) {
+          this.property.owner_description = text;
+          this.descMsg = 'Saved — live on your canonical property page now.';
+        } else {
+          this.descMsg = 'Save failed — try again.';
+        }
+      } catch (e) {
+        this.descMsg = 'Save failed — try again.';
+      }
+      this.descSaving = false;
     },
 
     async loadViewBadge() {
