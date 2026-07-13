@@ -731,7 +731,8 @@
                     <div style="font-size:.72rem;color:var(--muted)">rays clear</div>
                   </div>
                 </div>
-                <!-- Claim form -->
+                <!-- Claim form (only show if not already pending review) -->
+                <template x-if="viewBadge.claim_status !== 'pending_review'">
                 <div x-data="{ claimFile: null, claimNote: '', claimState: 'idle', claimMsg: '' }">
                   <p style="font-size:.82rem;margin-bottom:.5rem;color:var(--muted)">
                     Upload a photo from your deck — we'll review and publish your badge within 48h.
@@ -752,7 +753,7 @@
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ badge_type: 'ocean_view', note: claimNote })
                             }).then(async r => {
-                              if (!r.ok) throw new Error('failed to get upload URL');
+                              if (!r.ok) throw new Error(r.status === 409 ? 'claim_already_pending' : 'failed to get upload URL');
                               const { upload_url, upload_fields, claim_id, pending_key } = await r.json();
                               const fd = new FormData();
                               Object.entries(upload_fields).forEach(([k,v]) => fd.append(k, v));
@@ -769,13 +770,17 @@
                               viewBadge.claim_status = 'pending_review';
                             }).catch(e => {
                               claimState = 'idle';
-                              claimMsg = 'Upload failed — please try again.';
+                              claimMsg = e.message === 'claim_already_pending'
+                                ? 'You already have a photo under review for this badge — we\'ll be in touch within 48h.'
+                                : 'Upload failed — please try again.';
+                              if (e.message !== 'claim_already_pending') console.error('badge claim failed', e);
                             })
                           ">
                     <span x-text="claimState === 'uploading' ? 'Uploading…' : 'Submit photo'"></span>
                   </button>
                   <p x-show="claimMsg" x-text="claimMsg" style="font-size:.82rem;margin-top:.4rem;color:var(--muted)"></p>
                 </div>
+                </template>
               </div>
             </template>
 
@@ -896,7 +901,7 @@
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ badge_type: 'sound_view', note: claimNote })
                             }).then(async r => {
-                              if (!r.ok) throw new Error('failed to get upload URL');
+                              if (!r.ok) throw new Error(r.status === 409 ? 'claim_already_pending' : 'failed to get upload URL');
                               const { upload_url, upload_fields, claim_id, pending_key } = await r.json();
                               const fd = new FormData();
                               Object.entries(upload_fields).forEach(([k,v]) => fd.append(k, v));
@@ -913,7 +918,10 @@
                               soundBadge.claim_status = 'pending_review';
                             }).catch(e => {
                               claimState = 'idle';
-                              claimMsg = 'Upload failed — please try again.';
+                              claimMsg = e.message === 'claim_already_pending'
+                                ? 'You already have a photo under review for this badge — we\'ll be in touch within 48h.'
+                                : 'Upload failed — please try again.';
+                              if (e.message !== 'claim_already_pending') console.error('badge claim failed', e);
                             })
                           ">
                     <span x-text="claimState === 'uploading' ? 'Uploading…' : 'Submit photo'"></span>
@@ -1019,7 +1027,7 @@
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ badge_type: 'wind_sports', note: claimNote })
                             }).then(async r => {
-                              if (!r.ok) throw new Error('failed to get upload URL');
+                              if (!r.ok) throw new Error(r.status === 409 ? 'claim_already_pending' : 'failed to get upload URL');
                               const { upload_url, upload_fields, claim_id, pending_key } = await r.json();
                               const fd = new FormData();
                               Object.entries(upload_fields).forEach(([k,v]) => fd.append(k, v));
@@ -1036,7 +1044,10 @@
                               windBadge.claim_status = 'pending_review';
                             }).catch(e => {
                               claimState = 'idle';
-                              claimMsg = 'Upload failed — please try again.';
+                              claimMsg = e.message === 'claim_already_pending'
+                                ? 'You already have a photo under review for this badge — we\'ll be in touch within 48h.'
+                                : 'Upload failed — please try again.';
+                              if (e.message !== 'claim_already_pending') console.error('badge claim failed', e);
                             })
                           ">
                     <span x-text="claimState === 'uploading' ? 'Uploading…' : 'Submit photo'"></span>
