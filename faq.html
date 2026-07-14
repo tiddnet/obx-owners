@@ -302,5 +302,34 @@
   </div>
 </div>
 
+<script>
+(function(){
+  if (navigator.doNotTrack === '1' || window.doNotTrack === '1') return;
+  function vid(){
+    var m = document.cookie.match(/(?:^|; )obxd_vid=([0-9a-f-]{36})/);
+    if (m) return m[1];
+    var v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+        var r = Math.random()*16|0, x = c==='x' ? r : (r&0x3|0x8);
+        return x.toString(16);
+      });
+    document.cookie = 'obxd_vid='+v+'; max-age=31536000; path=/; domain=.obx.deals; SameSite=Lax; Secure';
+    return v;
+  }
+  var v = vid();
+  if (!sessionStorage.getItem('obxd_pv')) {
+    sessionStorage.setItem('obxd_pv', '1');
+    try {
+      navigator.sendBeacon('https://track.obx.deals/c', JSON.stringify({
+        event_type: 'pageview',
+        visitor_id: v,
+        url: location.href,
+        page_path: location.pathname,
+        referrer: document.referrer || null
+      }));
+    } catch(_) {}
+  }
+})();
+</script>
 </body>
 </html>

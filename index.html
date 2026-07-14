@@ -1319,6 +1319,35 @@ const AUTH0_CLIENT   = 'OQKSijQtrT6jcqIDIPNbbzzACig8TdXE';
 const AUTH0_AUDIENCE = 'https://owners-api.obx.deals';
 const API_BASE       = 'https://owners-api.obx.deals';
 
+// Shared cross-subdomain visitor cookie + pageview beacon (ADR 0074/0236).
+// Same obxd_vid cookie convention as obx.deals/search.obx.deals, so a
+// visitor is correlated across all three sites.
+function getVid() {
+  var m = document.cookie.match(/(?:^|; )obxd_vid=([0-9a-f-]{36})/);
+  if (m) return m[1];
+  var v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random()*16|0, x = c==='x' ? r : (r&0x3|0x8);
+      return x.toString(16);
+    });
+  document.cookie = 'obxd_vid=' + v + '; max-age=31536000; path=/; domain=.obx.deals; SameSite=Lax; Secure';
+  return v;
+}
+function trackPageview() {
+  if (navigator.doNotTrack === '1' || window.doNotTrack === '1') return;
+  if (!navigator.sendBeacon || sessionStorage.getItem('obxd_pv')) return;
+  sessionStorage.setItem('obxd_pv', '1');
+  try {
+    navigator.sendBeacon('https://track.obx.deals/c', JSON.stringify({
+      event_type: 'pageview',
+      visitor_id: getVid(),
+      url: location.href,
+      page_path: location.pathname,
+      referrer: document.referrer || null,
+    }));
+  } catch(_) {}
+}
+
 function ownerHub() {
   return {
     // Auth state
@@ -1426,6 +1455,7 @@ function ownerHub() {
 
     // ── Init ─────────────────────────────────────────────────────────────────
     async init() {
+      trackPageview();
       try {
         this.authClient = await auth0.createAuth0Client({
           domain:        AUTH0_DOMAIN,
