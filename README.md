@@ -47,6 +47,16 @@ aws dynamodb update-item --table-name owner_hub_users \
   --expression-attribute-values '{":v":{"S":"pro"}}' --region us-east-1
 ```
 
+## Post-deploy smoke test (ADR 0242, rental-intel)
+
+A `pre-push` git hook fires a live smoke test (`rental-intel/scripts/test_owners_site.py`) against `owners.obx.deals` after any push that updates `main` — detached from `git push` itself, so the push returns immediately. It waits ~45s for GitHub Pages propagation, then runs the check and emails an SES alert (`[post-deploy] obx-owners smoke test failed after push`) on failure. Status: `logs/post_push_latest.log` / `logs/post_push_latest.json` (gitignored).
+
+One-time install per machine:
+```bash
+make install-hooks
+```
+Real logic lives in `scripts/post_push_smoke.sh` (tracked) — edit that, not `.git/hooks/pre-push` (untracked, installed from `scripts/githooks/pre-push`).
+
 ## Related repos
 
 | Repo | Site | Purpose |
