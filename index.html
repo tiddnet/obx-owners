@@ -131,6 +131,32 @@
     .week-cell.risk-monitor { border-left: 3px solid #d4ac0d; }
     .comp-tier-badge  { font-size: .65rem; color: #999; margin-top: .15rem; }
 
+    /* ── Comp cohort transparency (ADR 0246) ── */
+    .tier-pill    { display: inline-block; padding: .1rem .45rem; border-radius: 10px;
+                     font-size: .66rem; font-weight: 700; }
+    .tier-pill-1  { background: #e8f5e9; color: #2e7d32; }
+    .tier-pill-2  { background: #fff8e6; color: #b36a00; }
+    .tier-pill-3  { background: #fff0e6; color: #c34c00; }
+    .tier-explain { font-size: .68rem; color: var(--muted); margin-top: .2rem; line-height: 1.3; }
+    .why-btn      { font-size: .68rem; margin-top: .3rem; }
+    .contrib-panel   { border: 1px solid var(--rule); border-radius: var(--radius);
+                        padding: 1rem; margin-top: .75rem; background: var(--bg); }
+    .spread-track { position: relative; height: 6px; background: var(--rule);
+                     border-radius: 3px; margin: 1.35rem .5rem .4rem; }
+    .spread-tick  { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--ink); }
+    .spread-legend{ font-size: .75rem; color: var(--muted); text-align: center; margin-bottom: .85rem; }
+    .contrib-group   { margin-bottom: .75rem; }
+    .contrib-group h4{ font-size: .74rem; text-transform: uppercase; letter-spacing: .03em;
+                        color: var(--muted); margin-bottom: .4rem; }
+    .contrib-group .home-tag { color: var(--accent); font-weight: 600; text-transform: none;
+                                letter-spacing: 0; }
+    .contrib-chips   { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .contrib-chip    { display: flex; align-items: center; gap: .35rem; background: var(--card);
+                        border: 1px solid var(--rule); border-radius: 6px; padding: .3rem .55rem;
+                        font-size: .78rem; }
+    .contrib-chip-adj{ background: #fff8e6; border-color: #f0c060; }
+    .contrib-chip .strike { opacity: .6; text-decoration: line-through; font-size: .72rem; }
+
     /* ── Upgrade gate ── */
     .gate { text-align: center; padding: 2rem; border: 2px dashed var(--rule);
             border-radius: var(--radius); color: var(--muted); }
@@ -567,23 +593,95 @@
                           </template>
                           <div style="font-size:.7rem;color:var(--muted)"
                                x-text="'n='+activeBasesData(w).n"></div>
-                          <template x-if="w.tier === 2">
-                            <div class="comp-tier-badge">† adj. community</div>
-                          </template>
-                          <template x-if="w.tier === 3">
-                            <div class="comp-tier-badge">‡ adj. bedrooms</div>
+                          <!-- Tier badge + plain-English explanation (ADR 0246) -->
+                          <template x-if="w.tier">
+                            <div class="mt1">
+                              <span class="tier-pill" :class="'tier-pill-'+w.tier" x-text="'Tier '+w.tier"></span>
+                              <div class="tier-explain" x-text="tierExplain(w)"></div>
+                              <button class="link-btn why-btn" @click="toggleContributors(w)"
+                                      x-text="expandedWeek === w.week_of ? 'Hide why ▲' : 'Why? ▼'"></button>
+                            </div>
                           </template>
                         </div>
                       </template>
                     </div>
                   </template>
                 </div>
-                <!-- Tier fallback legend -->
-                <template x-if="compsData && (compsData.weeks||[]).some(w => w.tier > 1)">
-                  <p style="font-size:.75rem;color:#888;margin-top:.5rem">
-                    † Adjacent community comps (same-community bucket sparse) &nbsp;·&nbsp;
-                    ‡ ±1 bedroom comps, rate-adjusted (ADR 0126/0127)
-                  </p>
+
+                <!-- Contributor "why" panel — expands below the grid for the selected week -->
+                <template x-if="expandedWeek">
+                  <div class="contrib-panel">
+                    <p class="section-head" style="margin-bottom:.5rem">
+                      Why the comp for <span x-text="fmtWeek(expandedWeek)"></span> looks like this
+                    </p>
+
+                    <!-- Basis selector, only when more than one basis is active -->
+                    <template x-if="activeBases.length > 1">
+                      <div class="basis-pills" style="margin-bottom:.75rem">
+                        <template x-for="b in activeBases" :key="b">
+                          <button class="pill" :class="{active: expandedBasis === b}"
+                                  @click="switchContributorsBasis(expandedWeek, b)" x-text="b"></button>
+                        </template>
+                      </div>
+                    </template>
+
+                    <div x-show="expandedContributorsLoading"><div class="spinner" style="width:22px;height:22px;margin:.75rem auto"></div></div>
+                    <div x-show="expandedContributorsError" class="error-msg" x-text="expandedContributorsError"></div>
+
+                    <template x-if="!expandedContributorsLoading && expandedContributorsData">
+                      <div>
+                        <!-- Percentile spread bar — proportional tick marks, no floating labels -->
+                        <template x-if="expandedSpreadStats">
+                          <div>
+                            <div class="spread-track">
+                              <div class="spread-tick" style="left:0%"></div>
+                              <div class="spread-tick" :style="'left:'+spreadPct(expandedSpreadStats, expandedSpreadStats.p50)+'%'"></div>
+                              <div class="spread-tick" :style="'left:'+spreadPct(expandedSpreadStats, expandedSpreadStats.p75)+'%'"></div>
+                              <div class="spread-tick" style="left:100%"></div>
+                            </div>
+                            <p class="spread-legend"
+                               x-text="'p25 $'+Math.round(expandedSpreadStats.p25).toLocaleString()+
+                                       ' · p50 $'+Math.round(expandedSpreadStats.p50).toLocaleString()+
+                                       ' · p75 $'+Math.round(expandedSpreadStats.p75).toLocaleString()+
+                                       ' · p90 $'+Math.round(expandedSpreadStats.p90).toLocaleString()"></p>
+                          </div>
+                        </template>
+
+                        <!-- Contributors grouped by community, home community first -->
+                        <template x-if="expandedGroupedContributors.length">
+                          <div>
+                            <template x-for="grp in expandedGroupedContributors" :key="grp.name">
+                              <div class="contrib-group">
+                                <h4>
+                                  <span x-text="grp.name"></span>
+                                  <template x-if="grp.contributors.some(c => c.is_home_community)">
+                                    <span class="home-tag"> · home community</span>
+                                  </template>
+                                </h4>
+                                <div class="contrib-chips">
+                                  <template x-for="c in grp.contributors" :key="c.property_id">
+                                    <span class="contrib-chip"
+                                          :class="{'contrib-chip-adj': c.source_bedrooms !== (property.canonical_bedrooms || property.bedrooms)}"
+                                          :title="c.source_bedrooms !== (property.canonical_bedrooms || property.bedrooms) ? 'Bedroom-adjusted: '+c.source_bedrooms+'BR scaled to match your '+(property.canonical_bedrooms || property.bedrooms)+'BR' : ''">
+                                      <span x-text="c.property_name"></span>
+                                      <span style="opacity:.65" x-text="c.source_bedrooms+'BR'"></span>
+                                      <span style="font-weight:600" x-text="'$'+Math.round(c.used_rate).toLocaleString()"></span>
+                                      <template x-if="c.raw_rate !== c.used_rate">
+                                        <span class="strike" x-text="'$'+Math.round(c.raw_rate).toLocaleString()"></span>
+                                      </template>
+                                    </span>
+                                  </template>
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+                        </template>
+                        <template x-if="!expandedGroupedContributors.length">
+                          <p style="font-size:.84rem;color:var(--muted)">No contributor detail for this week.</p>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
                 </template>
               </template>
             </div>
@@ -1376,6 +1474,13 @@ function ownerHub() {
     compsError:  '',
     activeBases: [],
 
+    // Comp cohort transparency — contributor "why" panel (ADR 0246)
+    expandedWeek:        null,  // week_of currently expanded, or null
+    contributorsBasis:   {},    // week_of -> rate_basis selected for that week's panel
+    contributorsData:    {},    // 'week_of|basis' -> { week_of, rate_basis, tier, contributors }
+    contributorsLoading: {},    // 'week_of|basis' -> bool
+    contributorsError:   {},    // 'week_of|basis' -> string
+
     // Pace
     paceData:      null,
     paceHighlight: null,
@@ -1742,6 +1847,9 @@ function ownerHub() {
       this.viewBadge = { eligible: false }; this.soundBadge = { eligible: false }; this.windBadge = { eligible: false };
       this.ownOpen = {}; this.ownBooked = {}; this.ownRateBasis = null;
       this.marketPulse = null;
+      this.expandedWeek = null;
+      this.contributorsBasis = {}; this.contributorsData = {};
+      this.contributorsLoading = {}; this.contributorsError = {};
       this.gapSummary = null; this.gapData = null; this.reportError = '';
       this.gapRiskSummary = null; this.gapRiskData = null;
       this.opportunitySummary = null; this.opportunityData = null;
@@ -1756,6 +1864,10 @@ function ownerHub() {
     // ── Comps ─────────────────────────────────────────────────────────────────
     async loadComps() {
       this.compsLoading = true; this.compsError = ''; this.compsData = null;
+      // New property/reload — contributor panel state from a previous property is stale.
+      this.expandedWeek = null;
+      this.contributorsBasis = {}; this.contributorsData = {};
+      this.contributorsLoading = {}; this.contributorsError = {};
       const id = this.property.property_id;
       const res = await this.api('/property/' + encodeURIComponent(id) + '/comps');
       this.compsLoading = false;
@@ -1801,6 +1913,107 @@ function ownerHub() {
     setRateWindow(w) {
       this.rateWindow = w;
       this.$nextTick(() => this.drawChart());
+    },
+
+    // ── Comp cohort transparency — contributor "why" panel (ADR 0246) ──────────
+    tierExplain(w) {
+      if (w.tier === 1) return 'Same subdivision, same bedroom count, same view type.';
+      if (w.tier === 2) return (this.property?.community || 'Your subdivision') + ' alone was too thin, widened to neighboring subdivisions.';
+      if (w.tier === 3) return 'Still thin after widening — nearby ±1 bedroom comps included, rates scaled to match.';
+      return '';
+    },
+
+    async toggleContributors(w) {
+      if (this.expandedWeek === w.week_of) { this.expandedWeek = null; return; }
+      this.expandedWeek = w.week_of;
+      const basis = this.contributorsBasis[w.week_of] || this.activeBases[0];
+      this.contributorsBasis = { ...this.contributorsBasis, [w.week_of]: basis };
+      await this.loadContributors(w.week_of, basis);
+    },
+
+    async switchContributorsBasis(weekOf, basis) {
+      this.contributorsBasis = { ...this.contributorsBasis, [weekOf]: basis };
+      await this.loadContributors(weekOf, basis);
+    },
+
+    async loadContributors(weekOf, basis) {
+      if (!basis) return;
+      const key = weekOf + '|' + basis;
+      if (this.contributorsData[key] || this.contributorsLoading[key]) return; // cached / in-flight
+      this.contributorsLoading = { ...this.contributorsLoading, [key]: true };
+      this.contributorsError   = { ...this.contributorsError,   [key]: '' };
+      const id = this.property.property_id;
+      let res;
+      try {
+        res = await this.api('/property/' + encodeURIComponent(id) +
+          '/comps/contributors?week_of=' + encodeURIComponent(weekOf) +
+          '&rate_basis=' + encodeURIComponent(basis));
+      } catch (e) {
+        res = null;
+      }
+      this.contributorsLoading = { ...this.contributorsLoading, [key]: false };
+      if (!res) return; // api() already handled 401 by redirecting to login
+      if (res.status === 403) {
+        // Backend Pro-gates this route the same as the parent /comps route; this
+        // is a defensive fallback in case a client's cached tier is stale — the
+        // expand affordance is already hidden for free tier since the whole
+        // weekly-breakdown block is tier!=='free' gated.
+        this.contributorsError = { ...this.contributorsError, [key]: 'Contributor detail is a Pro feature.' };
+        return;
+      }
+      if (!res.ok) {
+        this.contributorsError = { ...this.contributorsError, [key]: 'Could not load contributor detail.' };
+        return;
+      }
+      const data = await res.json();
+      this.contributorsData = { ...this.contributorsData, [key]: data };
+    },
+
+    get expandedBasis() {
+      if (!this.expandedWeek) return null;
+      return this.contributorsBasis[this.expandedWeek] || this.activeBases[0] || null;
+    },
+    get expandedContributorsKey() {
+      return (this.expandedWeek && this.expandedBasis) ? (this.expandedWeek + '|' + this.expandedBasis) : null;
+    },
+    get expandedContributorsData() {
+      const key = this.expandedContributorsKey;
+      return key ? (this.contributorsData[key] || null) : null;
+    },
+    get expandedContributorsLoading() {
+      const key = this.expandedContributorsKey;
+      return key ? !!this.contributorsLoading[key] : false;
+    },
+    get expandedContributorsError() {
+      const key = this.expandedContributorsKey;
+      return key ? (this.contributorsError[key] || '') : '';
+    },
+    get expandedSpreadStats() {
+      if (!this.expandedWeek || !this.expandedBasis) return null;
+      const week = (this.compsData?.weeks || []).find(w => w.week_of === this.expandedWeek);
+      return (week && week.by_basis) ? (week.by_basis[this.expandedBasis] || null) : null;
+    },
+    get expandedGroupedContributors() {
+      const data = this.expandedContributorsData;
+      if (!data) return [];
+      const groups = {};
+      (data.contributors || []).forEach(c => {
+        const g = c.source_community || 'Other';
+        (groups[g] = groups[g] || []).push(c);
+      });
+      return Object.keys(groups).sort((a, b) => {
+        const aHome = groups[a].some(c => c.is_home_community);
+        const bHome = groups[b].some(c => c.is_home_community);
+        if (aHome !== bHome) return aHome ? -1 : 1;
+        return a.localeCompare(b);
+      }).map(name => ({ name, contributors: groups[name] }));
+    },
+
+    // Proportional position (0–100) on the p25→p90 spread track. p50/p75 land at
+    // their true proportional value, not evenly spaced (validated preview pattern).
+    spreadPct(stat, val) {
+      if (!stat || stat.p90 === stat.p25) return 50;
+      return Math.max(0, Math.min(100, (val - stat.p25) / (stat.p90 - stat.p25) * 100));
     },
 
     toggleBasis(b) {
