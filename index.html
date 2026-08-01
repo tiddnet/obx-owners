@@ -1649,7 +1649,10 @@ function ownerHub() {
 
     // ── User record ──────────────────────────────────────────────────────────
     async loadMe() {
-      const res = await this.api('/me');
+      // ADR 0252: pass email so the backend can auto-provision/backfill the
+      // owner_hub_users row on first login, regardless of connection type.
+      const emailQs = this.user?.email ? '?email=' + encodeURIComponent(this.user.email) : '';
+      const res = await this.api('/me' + emailQs);
       if (!res || !res.ok) return;
       const data = await res.json();
       this.tier            = data.tier || 'free';
