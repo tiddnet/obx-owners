@@ -281,64 +281,70 @@
             </li>
           </template>
         </ul>
-        <!-- Not in index — ingestion request form -->
-        <div x-show="searchResults.length===0 && searchQ.length>1 && !searchLoading"
+        <!-- ADR 0250 — status of a prior ingestion request, shown as soon as
+             it's known (page load or right after a fresh submit), regardless
+             of whether the owner is also searching for a different property.
+             This is the "second login" case: don't put them back in front of
+             a blank form with no memory of what they already told us. -->
+        <template x-if="ingestionStatus && ingestionStatus.has_request">
+          <div class="card" style="margin-top:1rem">
+            <p class="section-head">Your property request</p>
+            <p style="font-size:.9rem" x-text="ingestionStatus.status_label"></p>
+            <p x-show="ingestionStatus.resolved_note" style="font-size:.87rem;color:var(--muted);margin-top:.35rem" x-text="ingestionStatus.resolved_note"></p>
+            <p style="font-size:.8rem;color:var(--muted);margin-top:.6rem" x-text="ingestionStatus.help_line"></p>
+          </div>
+        </template>
+
+        <!-- Not in index, and no existing request — offer the ingestion form -->
+        <div x-show="searchResults.length===0 && searchQ.length>1 && !searchLoading && !(ingestionStatus && ingestionStatus.has_request)"
              style="margin-top:1rem">
           <p style="font-size:.84rem;color:var(--muted);margin-bottom:.75rem">
             Not finding your property? We index 8,000+ OBX rentals — if yours isn't here yet, tell us about it and we'll add it.
           </p>
-          <template x-if="!ingestionSubmitted">
-            <div class="card" x-data>
-              <p class="section-head">Request property ingestion</p>
-              <div style="display:grid;gap:.65rem">
-                <div>
-                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Contact email <span style="color:#c62828">*</span></label>
-                  <input type="email" x-model="ingestionForm.contact_email"
-                         style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
-                         placeholder="your@email.com">
-                </div>
-                <div>
-                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Property URL(s) <span style="color:#c62828">*</span></label>
-                  <textarea x-model="ingestionForm.urls_raw" rows="3"
-                            style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem;resize:vertical"
-                            placeholder="https://www.hatterasrealty.com/...&#10;https://www.airbnb.com/rooms/...&#10;One URL per line. Include any platform you're listed on."></textarea>
-                </div>
-                <div>
-                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Tell us about your property</label>
-                  <textarea x-model="ingestionForm.description" rows="2"
-                            style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem;resize:vertical"
-                            placeholder="Bedrooms, view type, community, anything helpful for getting the data right."></textarea>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
-                  <div>
-                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Favorite feature of your property</label>
-                    <input type="text" x-model="ingestionForm.favorite_feature"
-                           style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
-                           placeholder="Hot tub on the top deck…">
-                  </div>
-                  <div>
-                    <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Favorite local spot</label>
-                    <input type="text" x-model="ingestionForm.favorite_place"
-                           style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
-                           placeholder="Buxton Woods, Frisco pier…">
-                  </div>
-                </div>
-                <div x-show="ingestionError" class="error-msg" x-text="ingestionError"></div>
-                <button class="btn btn-primary" style="align-self:flex-start"
-                        :disabled="ingestionLoading"
-                        @click="submitIngestionRequest()">
-                  <span x-show="!ingestionLoading">Submit request</span>
-                  <span x-show="ingestionLoading">Submitting…</span>
-                </button>
+          <div class="card" x-data>
+            <p class="section-head">Request property ingestion</p>
+            <div style="display:grid;gap:.65rem">
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Contact email <span style="color:#c62828">*</span></label>
+                <input type="email" x-model="ingestionForm.contact_email"
+                       style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
+                       placeholder="your@email.com">
               </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Property URL(s) <span style="color:#c62828">*</span></label>
+                <textarea x-model="ingestionForm.urls_raw" rows="3"
+                          style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem;resize:vertical"
+                          placeholder="https://www.hatterasrealty.com/...&#10;https://www.airbnb.com/rooms/...&#10;One URL per line. Include any platform you're listed on."></textarea>
+              </div>
+              <div>
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Tell us about your property</label>
+                <textarea x-model="ingestionForm.description" rows="2"
+                          style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem;resize:vertical"
+                          placeholder="Bedrooms, view type, community, anything helpful for getting the data right."></textarea>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+                <div>
+                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Favorite feature of your property</label>
+                  <input type="text" x-model="ingestionForm.favorite_feature"
+                         style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
+                         placeholder="Hot tub on the top deck…">
+                </div>
+                <div>
+                  <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.25rem">Favorite local spot</label>
+                  <input type="text" x-model="ingestionForm.favorite_place"
+                         style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);padding:.45rem .7rem;font-size:.88rem"
+                         placeholder="Buxton Woods, Frisco pier…">
+                </div>
+              </div>
+              <div x-show="ingestionError" class="error-msg" x-text="ingestionError"></div>
+              <button class="btn btn-primary" style="align-self:flex-start"
+                      :disabled="ingestionLoading"
+                      @click="submitIngestionRequest()">
+                <span x-show="!ingestionLoading">Submit request</span>
+                <span x-show="ingestionLoading">Submitting…</span>
+              </button>
             </div>
-          </template>
-          <template x-if="ingestionSubmitted">
-            <div class="card" style="text-align:center;color:var(--muted)">
-              <p style="font-size:1.1rem;margin-bottom:.4rem">✓ Request received</p>
-              <p style="font-size:.87rem">We'll add your property to the index and reach out if we have questions. Usually within a few days.</p>
-            </div>
-          </template>
+          </div>
         </div>
       </div>
     </template>
@@ -1560,6 +1566,10 @@ function ownerHub() {
     ingestionLoading: false,
     ingestionError: '',
     ingestionSubmitted: false,
+    // ADR 0250 — persisted status, so a returning visitor sees the outcome
+    // of a prior submission instead of a blank form again.
+    ingestionStatus: null,
+    ingestionStatusLoading: false,
 
     // ── Init ─────────────────────────────────────────────────────────────────
     async init() {
@@ -1623,6 +1633,7 @@ function ownerHub() {
     async logout() {
       await this.authClient.logout({ logoutParams: { returnTo: location.origin } });
       this.user = null; this.token = null; this.property = null;
+      this.ingestionStatus = null;
     },
 
     // ── API ───────────────────────────────────────────────────────────────────
@@ -1651,6 +1662,22 @@ function ownerHub() {
         await this.loadProperty(this.propertyIds[0]);
         this.loadPortfolioGaps();
         this.loadMarketPulse();
+      } else {
+        this.loadIngestionStatus();
+      }
+    },
+
+    // ADR 0250 — check for a prior ingestion request on every property-less
+    // login, not just right after submitting one in the same browser session.
+    async loadIngestionStatus() {
+      this.ingestionStatusLoading = true;
+      try {
+        const res = await this.api('/me/ingestion-request');
+        if (res && res.ok) {
+          this.ingestionStatus = await res.json();
+        }
+      } finally {
+        this.ingestionStatusLoading = false;
       }
     },
 
@@ -1860,6 +1887,7 @@ function ownerHub() {
       this.ingestionSubmitted = false; this.ingestionError = '';
       this.ingestionForm.urls_raw = ''; this.ingestionForm.description = '';
       this.ingestionForm.favorite_feature = ''; this.ingestionForm.favorite_place = '';
+      this.loadIngestionStatus();
       const oldCtx = document.getElementById('compsChart');
       if (oldCtx?._chart) { oldCtx._chart.destroy(); delete oldCtx._chart; }
     },
@@ -2268,6 +2296,16 @@ function ownerHub() {
       this.ingestionLoading = false;
       if (res && res.ok) {
         this.ingestionSubmitted = true;
+        // Sets the same shape loadIngestionStatus() would fetch on a future
+        // login, so the "already submitted" state is consistent whether it
+        // came from this submit or a page reload (ADR 0250).
+        this.ingestionStatus = {
+          has_request:   true,
+          status:        'pending',
+          status_label:  "We're reviewing your request.",
+          resolved_note: null,
+          help_line:     "Can't find what you need? Email owners@obx.deals.",
+        };
       } else {
         this.ingestionError = 'Something went wrong. Please try again.';
       }
