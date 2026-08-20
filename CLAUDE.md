@@ -39,6 +39,8 @@ in rental-intel's SQLite DB and DynamoDB tables.
 - ADR 0124 — Chart rendering (Chart.js create-once update-in-place)
 - ADR 0136 — Multi-property portfolio support
 - ADR 0140 — Badge claim in-hub form
+- ADR 0268 — Login re-engagement prompt (dismissible banner on GET /me's
+  `pending_prompt`, auto-files a support request via POST /login-prompt-response)
 
 ## Deployment
 

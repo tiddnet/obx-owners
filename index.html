@@ -260,6 +260,89 @@
 <template x-if="user">
   <div class="main">
 
+    <!-- Login re-engagement prompt (ADR 0268) — dismissible, never blocking.
+         Shown when GET /me returns pending_prompt (targeted campaign only,
+         not shown to everyone). -->
+    <template x-if="pendingPrompt && !promptDismissed">
+      <div style="background:var(--tag-bg);border:1px solid var(--accent);border-radius:var(--radius);
+                  padding:1rem 1.25rem;margin-bottom:1.5rem;position:relative">
+        <button @click="promptDismissed=true"
+                aria-label="Dismiss"
+                style="position:absolute;top:.6rem;right:.75rem;background:none;border:none;
+                       font-size:1.2rem;cursor:pointer;color:var(--muted)">×</button>
+
+        <template x-if="!promptSubmitted">
+          <div style="padding-right:1.5rem">
+            <p style="font-weight:600;margin-bottom:.6rem;color:var(--tag-ink)">
+              Welcome back — last time didn't go smoothly. What happened?
+            </p>
+
+            <template x-if="!promptReason">
+              <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
+                <template x-for="r in pendingPrompt.reasons" :key="r">
+                  <button class="btn btn-sm" style="background:var(--card);border:1px solid var(--rule)"
+                          @click="promptReason=r" x-text="promptReasonLabel(r)"></button>
+                </template>
+              </div>
+            </template>
+
+            <template x-if="promptReason">
+              <div>
+                <p style="font-size:.85rem;font-weight:600;margin-bottom:.4rem" x-text="promptReasonLabel(promptReason)"></p>
+
+                <template x-if="promptReason === 'missing_property'">
+                  <input type="text" x-model="promptDetail"
+                         placeholder="What's the property address or name?"
+                         style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);
+                                padding:.5rem .75rem;font-size:.9rem;margin-bottom:.6rem;background:var(--card)">
+                </template>
+
+                <template x-if="promptReason === 'login_issue'">
+                  <div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+                    <button class="btn btn-sm"
+                            :style="promptDetail==='still happening' ? 'background:var(--accent);color:#fff' : 'background:var(--card);border:1px solid var(--rule)'"
+                            @click="promptDetail='still happening'">Still happening</button>
+                    <button class="btn btn-sm"
+                            :style="promptDetail==='resolved itself' ? 'background:var(--accent);color:#fff' : 'background:var(--card);border:1px solid var(--rule)'"
+                            @click="promptDetail='resolved itself'">Seems fine now</button>
+                  </div>
+                </template>
+
+                <template x-if="promptReason === 'confusing_instructions'">
+                  <textarea x-model="promptDetail" rows="2"
+                            placeholder="What was confusing?"
+                            style="width:100%;border:1px solid var(--rule);border-radius:var(--radius);
+                                   padding:.5rem .75rem;font-size:.9rem;resize:vertical;font-family:inherit;
+                                   margin-bottom:.6rem;background:var(--card)"></textarea>
+                </template>
+
+                <div style="display:flex;align-items:center;gap:.75rem">
+                  <button class="btn btn-primary btn-sm" :disabled="promptLoading" @click="submitLoginPrompt()">
+                    <span x-text="promptLoading ? 'Sending…' : 'Send'"></span>
+                  </button>
+                  <button style="background:none;border:none;font-size:.82rem;cursor:pointer;color:var(--muted);text-decoration:underline"
+                          @click="promptReason=''">back</button>
+                </div>
+                <template x-if="promptError">
+                  <p style="color:var(--accent2);font-size:.82rem;margin-top:.5rem" x-text="promptError"></p>
+                </template>
+              </div>
+            </template>
+
+            <p style="font-size:.78rem;color:var(--muted);margin-top:.75rem">
+              A real person reads every message here — not a bot. We'll reply to your account
+              email, usually within one business day. Need something faster? Email
+              <a href="mailto:owners@obx.deals" style="color:var(--accent)">owners@obx.deals</a> directly.
+            </p>
+          </div>
+        </template>
+
+        <template x-if="promptSubmitted">
+          <p style="color:#2e7d32;font-weight:600;padding-right:1.5rem">✓ Thanks — we'll follow up soon.</p>
+        </template>
+      </div>
+    </template>
+
     <!-- Property picker -->
     <template x-if="!property">
       <div>
@@ -1558,6 +1641,16 @@ function ownerHub() {
     supportSubmitted: false,
     supportError:     '',
     supportOpen:      false,
+
+    // Login re-engagement prompt (ADR 0268) — populated from GET /me's
+    // pending_prompt when present; null means nothing to show.
+    pendingPrompt:    null,
+    promptDismissed:  false,  // local, session-only dismiss (server auto-dismisses after MAX_PROMPT_SHOWS)
+    promptReason:     '',
+    promptDetail:     '',
+    promptLoading:    false,
+    promptSubmitted:  false,
+    promptError:      '',
     settingsOpen:     false,
     menuOpen:         false,
 
@@ -1661,6 +1754,7 @@ function ownerHub() {
       this.featuredEnabled     = !!data.featured;
       this.featuredPropertyIds = data.featured_property_ids || [];
       this.propertyIds     = data.property_ids || (data.property_id ? [data.property_id] : []);
+      this.pendingPrompt   = data.pending_prompt || null;  // ADR 0268
       if (this.propertyIds.length) {
         await this.loadProperty(this.propertyIds[0]);
         this.loadPortfolioGaps();
@@ -2329,6 +2423,35 @@ function ownerHub() {
         this.supportSubmitted = true;
       } else {
         this.supportError = 'Something went wrong. Please try again.';
+      }
+    },
+
+    // ── Login re-engagement prompt (ADR 0268) ───────────────────────────────────
+    promptReasonLabel(reason) {
+      return {
+        missing_property:       "Couldn't find my property",
+        login_issue:             'Had trouble logging in',
+        confusing_instructions:  'The instructions were confusing',
+      }[reason] || reason;
+    },
+
+    async submitLoginPrompt() {
+      this.promptError = '';
+      if (!this.promptReason) { this.promptError = 'Please choose one.'; return; }
+      this.promptLoading = true;
+      const res = await this.api('/login-prompt-response', {
+        method: 'POST',
+        body: JSON.stringify({
+          campaign: this.pendingPrompt?.campaign || '',
+          reason:   this.promptReason,
+          detail:   (this.promptDetail || '').trim(),
+        }),
+      });
+      this.promptLoading = false;
+      if (res && res.ok) {
+        this.promptSubmitted = true;
+      } else {
+        this.promptError = 'Something went wrong. Please try again.';
       }
     },
 
