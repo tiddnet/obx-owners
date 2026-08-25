@@ -502,6 +502,30 @@
           </div>
         </div>
 
+        <!-- Listings & Links (ADR 0271) -->
+        <template x-if="property.links && Object.keys(property.links).length">
+          <div class="card mb1">
+            <p class="section-head">Listings &amp; links</p>
+            <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+              <template x-if="property.links.pm_url">
+                <a class="btn btn-outline btn-sm" :href="property.links.pm_url" target="_blank" rel="noopener">PM listing ↗</a>
+              </template>
+              <template x-if="property.links.airbnb_url">
+                <a class="btn btn-outline btn-sm" :href="property.links.airbnb_url" target="_blank" rel="noopener">Airbnb listing ↗</a>
+              </template>
+              <template x-if="property.links.canonical_page_url">
+                <a class="btn btn-outline btn-sm" :href="property.links.canonical_page_url" target="_blank" rel="noopener">obx.deals page ↗</a>
+              </template>
+              <template x-if="property.links.badge_url">
+                <a class="btn btn-outline btn-sm" :href="property.links.badge_url" target="_blank" rel="noopener">Verified view badge ↗</a>
+              </template>
+              <template x-if="property.links.maps_url">
+                <a class="btn btn-outline btn-sm" :href="property.links.maps_url" target="_blank" rel="noopener">Map ↗</a>
+              </template>
+            </div>
+          </div>
+        </template>
+
         <!-- Public listing description (ADR 0224 Stage 3) -->
         <div class="card mb1">
           <p class="section-head">Public listing description</p>
