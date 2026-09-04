@@ -1343,7 +1343,7 @@
                     <template x-if="gapData.est_value > 0">
                       <span x-text="' · Est. recoverable: $' + Math.round(gapData.est_value).toLocaleString()"></span>
                     </template>
-                    <span style="color:var(--muted);font-size:.82rem"> · Request a min-stay exception from your PM for each window.</span>
+                    <span style="color:var(--muted);font-size:.82rem"> · See recommended action per row below.</span>
                   </p>
                   <div style="overflow-x:auto">
                     <table style="width:100%;font-size:.82rem;border-collapse:collapse">
@@ -1353,6 +1353,8 @@
                           <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Check-out</th>
                           <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Nights</th>
                           <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Est. value</th>
+                          <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Recommended action</th>
+                          <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Fix it</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1362,6 +1364,23 @@
                             <td style="padding:.3rem .5rem" x-text="g.checkout"></td>
                             <td style="padding:.3rem .5rem;text-align:right" x-text="g.nights"></td>
                             <td style="padding:.3rem .5rem;text-align:right" x-text="g.est_rate ? '$'+Math.round(g.est_rate).toLocaleString() : '—'"></td>
+                            <td style="padding:.3rem .5rem" x-text="g.recommended_action || (g.mechanism === 'engine_rejected' ? 'Flag to your PM — booking engine won\'t sell this open window' : 'Request min-stay exception')"></td>
+                            <!-- ADR 0316: PM listing link + pre-filled mailto. Only present
+                                 when the backend has features.gap_deep_links on for this user
+                                 (per-user override, not yet a tier default -- unverified in a
+                                 real browser as of this ship, see ADR 0316). Degrades to
+                                 nothing (empty cell) when absent, so this is safe to deploy
+                                 ahead of the flag being flipped for anyone. -->
+                            <td style="padding:.3rem .5rem;white-space:nowrap">
+                              <template x-if="g.listing_url">
+                                <a :href="g.listing_url" target="_blank" rel="noopener"
+                                   style="margin-right:.6rem;font-size:.78rem">View listing →</a>
+                              </template>
+                              <template x-if="g.email_subject && g.email_body">
+                                <a :href="'mailto:?subject=' + encodeURIComponent(g.email_subject) + '&body=' + encodeURIComponent(g.email_body)"
+                                   style="font-size:.78rem">Email PM →</a>
+                              </template>
+                            </td>
                           </tr>
                         </template>
                       </tbody>
