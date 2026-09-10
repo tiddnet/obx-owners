@@ -507,6 +507,12 @@
           <div class="card mb1">
             <p class="section-head">Listings &amp; links</p>
             <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+              <!-- ADR 0271 amendment 2026-09-10: hand-built one-off report,
+                   allowlisted per-canonical_id in the Lambda, not every
+                   property has one. -->
+              <template x-if="property.links.report_url">
+                <a class="btn btn-primary btn-sm" :href="property.links.report_url" target="_blank" rel="noopener">Your custom report ↗</a>
+              </template>
               <template x-if="property.links.pm_url">
                 <a class="btn btn-outline btn-sm" :href="property.links.pm_url" target="_blank" rel="noopener">PM listing ↗</a>
               </template>
