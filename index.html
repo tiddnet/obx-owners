@@ -1295,6 +1295,18 @@
         </div>
       </template>
 
+      <!-- ── Open-stretch teaser (free, ADR 0366) ─────────────────────────────── -->
+      <template x-if="tier === 'free' && openStretchSummary && openStretchSummary.stretch_count > 0">
+        <div class="card mb1" style="border-left:3px solid #1565c0;background:#f0f4ff">
+          <p class="section-head" style="color:#1565c0">Open availability</p>
+          <p style="font-size:.92rem;margin-bottom:.75rem">
+            You have <strong x-text="openStretchSummary.stretch_count + ' open stretch' + (openStretchSummary.stretch_count !== 1 ? 'es' : '')"></strong>
+            (<strong x-text="openStretchSummary.total_open_nights + ' night' + (openStretchSummary.total_open_nights !== 1 ? 's' : '')"></strong> total) coming up. Upgrade to see the dates and how your rate compares to the market.
+          </p>
+          <button class="btn btn-upgrade btn-sm" @click="showUpgrade()">Unlock Pro — see the calendar →</button>
+        </div>
+      </template>
+
       <!-- ── Market pulse teaser (free) ──────────────────────────────────────── -->
       <template x-if="marketPulse && marketPulse.comp_booking">
         <div class="card mb1" style="border-left:3px solid #1565c0;background:#f0f4ff">
@@ -1408,6 +1420,58 @@
               </button>
               <template x-if="reportError">
                 <p style="color:var(--accent2);font-size:.82rem;margin-top:.5rem" x-text="reportError"></p>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- ── Open stretches (pro, ADR 0366) ───────────────────────────────────── -->
+      <template x-if="tier !== 'free' && property">
+        <div class="card mb1">
+          <p class="section-head">Open availability</p>
+          <template x-if="openStretchLoading">
+            <div class="spinner"></div>
+          </template>
+          <template x-if="!openStretchLoading && openStretchData">
+            <div>
+              <template x-if="openStretchData.stretch_count === 0">
+                <p style="font-size:.9rem;color:#2e7d32">✓ No open stretches coming up.</p>
+              </template>
+              <template x-if="openStretchData.stretch_count > 0">
+                <p style="font-size:.9rem;margin-bottom:.5rem">
+                  <strong x-text="openStretchData.stretch_count + ' stretch' + (openStretchData.stretch_count !== 1 ? 'es' : '') + ' · ' + openStretchData.total_open_nights + ' open night' + (openStretchData.total_open_nights !== 1 ? 's' : '')"></strong>
+                </p>
+              </template>
+              <!-- Full per-stretch list only present once features.open_stretches
+                   is on for this user (per-user override for now, same rollout
+                   discipline as gap_deep_links -- ADR 0366). Degrades to just the
+                   summary line above when absent. -->
+              <template x-if="openStretchData.stretches && openStretchData.stretches.length > 0">
+                <div style="overflow-x:auto;margin-top:.5rem">
+                  <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+                    <thead>
+                      <tr style="background:#f5f5f5">
+                        <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Start</th>
+                        <th style="text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">End</th>
+                        <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Nights</th>
+                        <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Your rate</th>
+                        <th style="text-align:right;padding:.3rem .5rem;border-bottom:1px solid var(--rule)">Comp rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="s in openStretchData.stretches" :key="s.start">
+                        <tr style="border-bottom:1px solid var(--rule)">
+                          <td style="padding:.3rem .5rem" x-text="s.start"></td>
+                          <td style="padding:.3rem .5rem" x-text="s.end"></td>
+                          <td style="padding:.3rem .5rem;text-align:right" x-text="s.nights"></td>
+                          <td style="padding:.3rem .5rem;text-align:right" x-text="s.own_avg_rate ? '$'+Math.round(s.own_avg_rate).toLocaleString()+'/wk' : '—'"></td>
+                          <td style="padding:.3rem .5rem;text-align:right" x-text="s.comp_avg_rate ? '$'+Math.round(s.comp_avg_rate).toLocaleString()+'/wk' : '—'"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
               </template>
             </div>
           </template>
@@ -1672,6 +1736,9 @@ function ownerHub() {
     gapData:      null,
     gapLoading:   false,
     reportLoading: false,
+    openStretchSummary: null,   // ADR 0366
+    openStretchData:    null,
+    openStretchLoading: false,
 
     // Calendar Risk (ADR 0044 Module 2)
     gapRiskSummary: null,
@@ -1981,9 +2048,10 @@ function ownerHub() {
       // Badges are free-tier (ADR 0207) — load regardless of tier.
       this.loadViewBadge(); this.loadSoundBadge(); this.loadWindBadge();
       if (this.tier !== 'free') {
-        await Promise.all([this.loadRates(), this.loadGaps()]);
+        await Promise.all([this.loadRates(), this.loadGaps(), this.loadOpenStretches()]);
       } else {
         this.loadGapSummary();
+        this.loadOpenStretchSummary();
       }
       this.$nextTick(() => this.drawChart());
     },
@@ -2043,6 +2111,7 @@ function ownerHub() {
       this.contributorsBasis = {}; this.contributorsData = {};
       this.contributorsLoading = {}; this.contributorsError = {};
       this.gapSummary = null; this.gapData = null; this.reportError = '';
+      this.openStretchSummary = null; this.openStretchData = null;
       this.gapRiskSummary = null; this.gapRiskData = null;
       this.opportunitySummary = null; this.opportunityData = null;
       this.searchQ = ''; this.searchResults = [];
@@ -2345,6 +2414,23 @@ function ownerHub() {
       const id = this.property.property_id;
       const res = await this.api('/property/' + encodeURIComponent(id) + '/gaps');
       if (res && res.ok) this.gapSummary = await res.json();
+    },
+
+    // ── Open stretches (ADR 0366) ────────────────────────────────────────────
+    async loadOpenStretchSummary() {
+      if (!this.property) return;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/open-stretches');
+      if (res && res.ok) this.openStretchSummary = await res.json();
+    },
+
+    async loadOpenStretches() {
+      if (!this.property) return;
+      this.openStretchLoading = true;
+      const id = this.property.property_id;
+      const res = await this.api('/property/' + encodeURIComponent(id) + '/open-stretches');
+      this.openStretchLoading = false;
+      if (res && res.ok) this.openStretchData = await res.json();
     },
 
     async loadVisibility() {
