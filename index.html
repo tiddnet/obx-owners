@@ -87,6 +87,18 @@
     .tier-free { background: #e8f5e9; color: #2e7d32; }
     .tier-pro  { background: #fff3e0; color: #e65100; }
 
+    /* ── Home-monitoring interest (rental-intel ADR 0517) ── */
+    .hm-teaser { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius);
+                 padding: 1.5rem; margin: 2.5rem 0 1rem; text-align: left; }
+    .hm-teaser h2 { font-size: 1.15rem; margin-bottom: .6rem; }
+    .hm-teaser p, .hm-teaser li { font-size: .9rem; color: var(--muted); }
+    .hm-teaser ul { margin: .75rem 0 .75rem 1.2rem; }
+    .hm-teaser li { margin-bottom: .4rem; }
+    .hm-form { display: flex; gap: .5rem; flex-wrap: wrap; margin: .9rem 0 .5rem; }
+    .hm-form input { flex: 1 1 220px; padding: .55rem .7rem; border: 1px solid var(--rule);
+                     border-radius: 6px; font-size: .9rem; }
+    .hm-note { font-size: .8rem !important; margin-top: .4rem; }
+
     /* ── Dashboard ── */
     .section-head { font-size: .75rem; font-weight: 700; color: var(--muted);
                     text-transform: uppercase; letter-spacing: .06em; margin-bottom: .75rem; }
@@ -252,6 +264,26 @@
 
     <div style="text-align:center;margin-top:2rem">
       <p style="font-size:.84rem;color:var(--muted)">Data from Hatteras Realty, Outer Banks Blue, SOS, Twiddy, Village Realty, KEES, and 18 more OBX property managers.</p>
+    </div>
+
+    <!-- Home-monitoring interest (rental-intel ADR 0517): interest only, no offer -->
+    <div class="hm-teaser">
+      <h2>We watch our own rental houses when nobody's there</h2>
+      <p>At our own two Outer Banks rentals we track power use circuit by circuit, plus the thermostat, and get an alert when something looks wrong.</p>
+      <ul>
+        <li><strong>August:</strong> an air handler's fan ran for five days while its heat pump failed every start. The power data showed it from the first day. A guest found it at check-in. We now get that alert the day it starts.</li>
+        <li><strong>November:</strong> a ten-minute test before winter showed one house's backup heat drawing half its rated power.</li>
+      </ul>
+      <p>Would you want this at your house?</p>
+      <template x-if="!hmDone">
+        <form class="hm-form" @submit.prevent="hmSignup()">
+          <input type="email" required placeholder="you@example.com" x-model="hmEmail" aria-label="Email address">
+          <button class="btn btn-primary" type="submit" :disabled="hmBusy">Tell me when this opens</button>
+        </form>
+      </template>
+      <template x-if="hmDone"><p class="hm-note">Thanks. We'll email you if we open this to other owners.</p></template>
+      <template x-if="hmError"><p class="hm-note" style="color:#b71c1c" x-text="hmError"></p></template>
+      <p class="hm-note">No cost and no commitment. We only want to know who's interested.</p>
     </div>
   </div>
 </template>
@@ -1483,6 +1515,26 @@
     </template>
 
 
+
+    <!-- Home-monitoring interest (rental-intel ADR 0517) -->
+    <div class="hm-teaser" x-init="hmEmail = hmEmail || (user && user.email) || ''">
+      <h2>We watch our own rental houses when nobody's there</h2>
+      <p>At our own two Outer Banks rentals we track power use circuit by circuit, plus the thermostat, and get an alert when something looks wrong.</p>
+      <ul>
+        <li><strong>August:</strong> an air handler's fan ran for five days while its heat pump failed every start. The power data showed it from the first day. A guest found it at check-in. We now get that alert the day it starts.</li>
+        <li><strong>November:</strong> a ten-minute test before winter showed one house's backup heat drawing half its rated power.</li>
+      </ul>
+      <p>Would you want this at your house?</p>
+      <template x-if="!hmDone">
+        <form class="hm-form" @submit.prevent="hmSignup()">
+          <input type="email" required placeholder="you@example.com" x-model="hmEmail" aria-label="Email address">
+          <button class="btn btn-primary" type="submit" :disabled="hmBusy">Tell me when this opens</button>
+        </form>
+      </template>
+      <template x-if="hmDone"><p class="hm-note">Thanks. We'll email you if we open this to other owners.</p></template>
+      <template x-if="hmError"><p class="hm-note" style="color:#b71c1c" x-text="hmError"></p></template>
+      <p class="hm-note">No cost and no commitment. We only want to know who's interested.</p>
+    </div>
   </div>
 </template>
 
@@ -1672,6 +1724,9 @@ function ownerHub() {
     token:   null,
     loading: true,
 
+    // Home-monitoring interest sign-up (rental-intel ADR 0517)
+    hmEmail: '', hmBusy: false, hmDone: false, hmError: '',
+
     // User record
     tier:     'free',
     features: {},
@@ -1841,6 +1896,23 @@ function ownerHub() {
         // user_id when one is known instead of always being anonymous.
         trackPageview(this.user?.sub);
         this.loading = false;
+      }
+    },
+
+    async hmSignup() {
+      this.hmBusy = true; this.hmError = '';
+      try {
+        // text/plain keeps this a simple cross-origin request (no preflight).
+        const res = await fetch('https://track.obx.deals/subscribe', {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ email: this.hmEmail.trim(), features: ['home_monitoring'] }),
+        });
+        if (!res.ok) throw new Error('signup failed');
+        this.hmDone = true;
+      } catch (_) {
+        this.hmError = "That didn't go through. Please try again in a moment.";
+      } finally {
+        this.hmBusy = false;
       }
     },
 
